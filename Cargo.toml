@@ -1,0 +1,14 @@
+[package]
+name = "gapbs"
+version = "0.1.0"
+authors = ["rasviitanen <rasviitanen@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+time = "0.1.34"
+rand = "0.7"
+# Get raton form git to enable `step_by`, as it is
+# currently not available in the latest published version (1.3.0)
+rayon = { git = "https://github.com/rayon-rs/rayon" }
