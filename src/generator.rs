@@ -1,3 +1,5 @@
+use crate::types::*;
+
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 use rayon::iter::IndexedParallelIterator;
@@ -6,15 +8,7 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 
-type NodeId = usize;
-type DestId = NodeId;
-type Weight = NodeId;
-
-type Edge = (NodeId, DestId);
-type WEdge = (NodeId, DestId, Weight);
-type EdgeList = Vec<Edge>;
-
-struct Generator {
+pub struct Generator {
     scale: usize,
     num_nodes: usize,
     num_edges: usize,
@@ -36,9 +30,11 @@ impl Generator {
 
     pub fn permutate_ids(&self, edge_list: &mut EdgeList) {
         let mut permutation: Vec<NodeId> = (0..self.num_nodes).into_par_iter().collect();
-        let mut rng: StdRng = SeedableRng::seed_from_u64(crate::K_RAND_SEED as u64);
+        // let mut rng: StdRng = SeedableRng::seed_from_u64(crate::K_RAND_SEED as u64);
 
-        // let el = edge_list.as_parallel_slice_mut();
+        // FIXME: Change to custom seed?
+        let mut rng = rand::thread_rng();
+
         permutation.shuffle(&mut rng);
 
         edge_list.par_iter_mut().for_each(|e| {
@@ -49,7 +45,7 @@ impl Generator {
 
     fn make_uniform_edge_list(&self) -> EdgeList {
         let mut edge_list = Vec::with_capacity(self.num_edges);
-        let uniform_distribution = rand::distributions::Uniform::from(0..self.num_nodes - 1);
+        let uniform_distribution = rand::distributions::Uniform::from(0..self.num_nodes);
         edge_list.par_extend(
             (0..self.num_nodes)
                 .into_par_iter()
@@ -58,9 +54,12 @@ impl Generator {
                     (block..std::cmp::min(block + self.block_size, self.num_nodes))
                         .into_par_iter()
                         .map(move |_| {
-                            let mut rng: StdRng = SeedableRng::seed_from_u64(
-                                (crate::K_RAND_SEED + block / self.block_size) as u64,
-                            );
+                            // let mut rng = SeedableRng::seed_from_u64(
+                            //     (crate::K_RAND_SEED + block / self.block_size) as u64,
+                            // );
+
+                            // FIXME: change to custom seed?
+                            let mut rng = rand::thread_rng();
                             (
                                 uniform_distribution.sample(&mut rng),
                                 uniform_distribution.sample(&mut rng),
@@ -108,5 +107,12 @@ mod tests {
         let generator = Generator::new(12, 4);
         let edge_list = generator.generate_edge_list(true);
         assert_eq!(edge_list.len(), 45056);
+    }
+
+    #[test]
+    fn generate_small() {
+        let generator = Generator::new(1, 1);
+        let edge_list = generator.generate_edge_list(true);
+        assert_eq!(edge_list.len(), 11 << 1);
     }
 }
