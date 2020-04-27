@@ -14,10 +14,10 @@ const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
 const FILE_NAME: &'static str = "";
 const SCALE: usize = 2;
-const DEGREE: usize = 2;
+const DEGREE: usize = 5;
 
 
-struct BuilderBase {
+pub struct BuilderBase {
     symmetrize: bool,
     needs_weights: bool,
     num_nodes: Option<usize>,
@@ -65,7 +65,12 @@ impl BuilderBase {
     }
 
 
-    pub fn make_graph_from_edge_list(&self, edge_list: &EdgeList) {
+    pub fn make_graph_from_edge_list<V, E, G: CSRGraph<V, E>>(
+        &mut self,
+        edge_list: &EdgeList
+    ) -> G {
+        let t_start = time::now_utc();
+
         if self.num_nodes.is_none() {
             self.num_nodes = Some(Self::find_max_node_id(edge_list));
         }
@@ -74,10 +79,28 @@ impl BuilderBase {
             unimplemented!("Weights are not yet supported");
         }
 
-        unimplemented!("continue here");
+        let graph;
+        if self.symmetrize {
+            graph = G::build_directed(self.num_nodes.expect("`num_nodes` is not specified"), edge_list)
+        } else {
+            println!("Building undirected");
+            graph = G::build_undirected(self.num_nodes.expect("`num_nodes` is not specified"), edge_list)
+        }
+
+        let t_finish = time::now_utc();
+        println!(
+            "\tBuild Time: {} msec",
+            (t_finish - t_start).num_milliseconds()
+        );
+
+        graph
     }
 
-    pub fn make_graph<G: CSRGraph>() -> G {
+    fn squish_graph<V, E, G: CSRGraph<V, E>>(&self, graph: G) -> G {
+        unimplemented!("Squishing is not yet supported");
+    }
+
+    pub fn make_graph<V, E, G: CSRGraph<V, E>>(&mut self) -> G {
         let edge_list;
         if FILE_NAME != "" {
             unimplemented!("Loading from file is not supported");
@@ -86,33 +109,34 @@ impl BuilderBase {
             edge_list = generator.generate_edge_list(UNIFORM);
         }
 
-        unimplemented!("continue here");
+        dbg!(&edge_list);
+        let graph = self.make_graph_from_edge_list(&edge_list);
+        // self.squish_graph(graph) // FIXME: Enable squishing
+        graph
     }
 
-    pub fn make_csr(
-        &self,
-        edge_list: &EdgeList,
-        transpose: bool,
-        index: Box<DestId>,
-        neighs: Box<DestId>,
-    ) {
-        // let degrees = self.count_degrees(edge_list, transpose);
-        let num_nodes = self.num_nodes.expect("Num nodes not set");
-        let mut neighs = Vec::with_capacity(num_nodes);
-        neighs.par_extend(
-            edge_list
-                .par_iter()
-                .map(|e| {
-                    if self.symmetrize || (!self.symmetrize && !transpose) {
-                        return e.1;
-                    }
-        
-                    if self.symmetrize || (!self.symmetrize && transpose) {
-                        unimplemented!("Should call GetSource(e)");
-                    }
+    // pub fn make_csr<G: CSRGraph>(
+    //     &self,
+    //     edge_list: &EdgeList,
+    //     transpose: bool,
+    // ) -> G {
+    //     // let degrees = self.count_degrees(edge_list, transpose);
+    //     let num_nodes = self.num_nodes.expect("Num nodes not set");
+    //     let mut neighs = Vec::with_capacity(num_nodes);
+    //     neighs.par_extend(
+    //         edge_list
+    //             .par_iter()
+    //             .map(|e| {
+    //                 if self.symmetrize || (!self.symmetrize && !transpose) {
+    //                     return e.1;
+    //                 }
 
-                    unreachable!("OOPS, should not be reachable");
-                })
-        )
-    }
+    //                 if self.symmetrize || (!self.symmetrize && transpose) {
+    //                     unimplemented!("Should call GetSource(e)");
+    //                 }
+
+    //                 unreachable!("OOPS, should not be reachable");
+    //             })
+    //     )
+    // }
 }

@@ -1,3 +1,7 @@
+pub trait AsNode {
+    fn as_node(&self) -> NodeId;
+}
+
 pub type NodeId = usize;
 pub type DestId = NodeId;
 pub type Weight = NodeId;
