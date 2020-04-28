@@ -18,10 +18,12 @@ pub trait CSRGraph<V, E> {
     fn in_neigh(&self, v: NodeId) -> Range<E>;
     fn out_neigh(&self, v: NodeId) -> Range<E>;
 
-
     fn print_stats(&self);
 
     fn vertices(&self) -> Range<V>;
 
     fn old_bfs(&self, v: NodeId);
+
+    fn replace_out_edges(&self, v: NodeId, edges: Vec<E>);
+    fn replace_in_edges(&self, v: NodeId, edges: Vec<E>);
 }

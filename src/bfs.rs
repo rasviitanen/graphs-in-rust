@@ -123,8 +123,8 @@ pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     queue.push_back(source);
     queue.slide_window();
 
-    let mut curr = BitVec::from_elem(graph.num_nodes()*2, false);
-    let mut front = BitVec::from_elem(graph.num_nodes()*2, false);
+    let mut curr = BitVec::from_elem(graph.num_nodes()*10, false);
+    let mut front = BitVec::from_elem(graph.num_nodes()*10, false);
 
     let mut edges_to_check = graph.num_edges_directed();
     let mut scout_count = graph.out_degree(source);

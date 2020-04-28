@@ -13,9 +13,9 @@ const SYMMETRIZE: bool = false;
 const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
 const FILE_NAME: &'static str = "";
+const INVERT: bool = false;
 const SCALE: usize = 3;
 const DEGREE: usize = 5;
-
 
 pub struct BuilderBase {
     symmetrize: bool,
@@ -65,7 +65,7 @@ impl BuilderBase {
     }
 
 
-    pub fn make_graph_from_edge_list<V, E, G: CSRGraph<V, E>>(
+    pub fn make_graph_from_edge_list<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         &mut self,
         edge_list: &EdgeList
     ) -> G {
@@ -96,11 +96,37 @@ impl BuilderBase {
         graph
     }
 
-    fn squish_graph<V, E, G: CSRGraph<V, E>>(&self, graph: &mut G) -> G {
-        unimplemented!("Squishing is not yet supported");
+    fn squish_csr<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
+        graph: &mut G,
+        transpose: bool
+    ) {
+        for v in graph.vertices() {
+            let mut neighs: Vec<_>;
+            if transpose {
+                neighs = graph.in_neigh(v.as_node()).collect();
+                neighs.sort_by(|a, b| a.as_node().partial_cmp(&b.as_node()).unwrap());
+                neighs.dedup_by(|a, b| a.as_node() == b.as_node());
+                neighs.retain(|e| e.as_node() != v.as_node());
+                graph.replace_out_edges(v.as_node(), neighs);
+            } else {
+                neighs = graph.out_neigh(v.as_node()).collect();
+                neighs.sort_by(|a, b| a.as_node().partial_cmp(&b.as_node()).unwrap());
+                neighs.dedup_by(|a, b| a.as_node() == b.as_node());
+                neighs.retain(|e| e.as_node() != v.as_node());
+                graph.replace_out_edges(v.as_node(), neighs);
+            }
+
+        }
     }
 
-    pub fn make_graph<V, E, G: CSRGraph<V, E>>(&mut self) -> G {
+    fn squish_graph<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(&self, graph: &mut G) {
+        Self::squish_csr(graph, false);
+        if graph.directed() {
+            unimplemented!("Directed graphs are not supproted");
+        }
+    }
+
+    pub fn make_graph<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(&mut self) -> G {
         let edge_list;
         if FILE_NAME != "" {
             unimplemented!("Loading from file is not supported");
@@ -110,7 +136,7 @@ impl BuilderBase {
         }
 
         let mut graph = self.make_graph_from_edge_list(&edge_list);
-        // self.squish_graph(&mut graph); //FIXME: impl Squishing
+        self.squish_graph(&mut graph); //FIXME: impl Squishing
         graph
     }
 

@@ -65,11 +65,12 @@ impl<T> Node<T> {
 pub struct Graph<T> {
     vertices: RefCell<HashMap<usize, WrappedNode<T>>>,
     n_edges: Cell<usize>,
+    directed: bool,
 }
 
 impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
-        let graph = Graph::new();
+        let graph = Graph::new(true);
         for (v, e) in edge_list {
             graph.add_vertex(*v, None);
             graph.add_vertex(*e, None);
@@ -79,7 +80,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn build_undirected(num_nodes: usize, edge_list: &EdgeList) -> Self {
-        let graph = Graph::new();
+        let graph = Graph::new(false);
         for (v, e) in edge_list {
             graph.add_vertex(*v, None);
             graph.add_vertex(*e, None);
@@ -89,7 +90,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn directed(&self) -> bool {
-        unimplemented!();
+        self.directed
     }
 
     fn num_nodes(&self) -> usize {
@@ -129,7 +130,8 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             }
             Box::new(edges.into_iter())
         } else {
-            panic!("Vertex not found");
+            // panic!("Vertex not found");
+            Box::new(Vec::new().into_iter())
         }
     }
 
@@ -141,7 +143,8 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             }
             Box::new(edges.into_iter())
         } else {
-            panic!("Vertex not found");
+            // panic!("Vertex not found");
+            Box::new(Vec::new().into_iter())
         }
     }
 
@@ -153,7 +156,31 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn vertices(&self) -> Range<WrappedNode<T>> {
-        unimplemented!();
+        let mut edges = Vec::new();
+        for edge in self.vertices.borrow().values() {
+            edges.push(WrappedNode::from_node(Rc::clone(edge)));
+        }
+        Box::new(edges.into_iter())
+    }
+
+    fn replace_out_edges(&self, v: NodeId, edges: Vec<WrappedNode<T>>) {
+        if let Some(vertex) = self.vertices.borrow().get(&v) {
+            let mut new_edges = HashMap::new();
+            for e in edges {
+                new_edges.insert(e.as_node(), e);
+            }
+            vertex.borrow_mut().out_edges = new_edges;
+        }
+    }
+
+    fn replace_in_edges(&self, v: NodeId, edges: Vec<WrappedNode<T>>) {
+        if let Some(vertex) = self.vertices.borrow().get(&v) {
+            let mut new_edges = HashMap::new();
+            for e in edges {
+                new_edges.insert(e.as_node(), e);
+            }
+            vertex.borrow_mut().in_edges = new_edges;
+        }
     }
 
     fn old_bfs(&self, v: NodeId) {
@@ -162,10 +189,11 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
 }
 
 impl<T> Graph<T> {
-    pub fn new() -> Self {
+    pub fn new(directed: bool) -> Self {
         Graph {
             vertices: RefCell::new(HashMap::new()),
             n_edges: Cell::new(0),
+            directed
         }
     }
 
