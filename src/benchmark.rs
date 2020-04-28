@@ -41,8 +41,6 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
 
     pub fn bfs_bound(&mut self) {
         let next = self.pick_next();
-        self.graph.old_bfs(next);
-        println!("#######################################");
         crate::bfs::do_bfs(&self.graph, next);
     }
 

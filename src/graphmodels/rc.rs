@@ -86,6 +86,9 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             graph.add_vertex(*e, None);
             graph.add_edge(*v, *e, false);
         }
+
+        dbg!(&graph.n_edges);
+
         graph
     }
 

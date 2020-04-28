@@ -14,8 +14,8 @@ const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
 const FILE_NAME: &'static str = "";
 const INVERT: bool = false;
-const SCALE: usize = 3;
-const DEGREE: usize = 5;
+const SCALE: usize = 10;
+const DEGREE: usize = 20;
 
 pub struct BuilderBase {
     symmetrize: bool,

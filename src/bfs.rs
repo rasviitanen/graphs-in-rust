@@ -45,9 +45,9 @@ pub fn td_step<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     let mut new_queue = SlidingQueue::new();
 
     for u in &*queue {
-        println!("Processing: {}", u);
+        // println!("Processing: {}", u);
         graph.out_neigh(*u).into_iter().for_each(|v: E| {
-            println!("\tEdge: {}", v.as_node());
+            // println!("\tEdge: {}", v.as_node());
             new_queue.push_back(v.as_node());
             scout_count += 1;
             // let curr_val = parent.get(v.as_node());
@@ -131,47 +131,24 @@ pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 
     while !queue.empty() {
         if scout_count > (edges_to_check / ALPHA) {
-            let t_start = time::now_utc();
             queue_to_bitmap(&queue, &mut front);
-            let t_finish = time::now_utc();
-            println!(
-                "\tQueue to Bitmap: {} msec",
-                (t_finish - t_start).num_milliseconds()
-            );
 
             let mut awake_count = queue.size();
             let mut old_awake_count = 0;
             queue.slide_window();
 
             while {
-                let t_start = time::now_utc();
-
                 old_awake_count = awake_count;
                 awake_count = bu_step(graph, &mut parent, &mut front, &mut curr);
                 unsafe{std::ptr::swap(&mut front, &mut curr)};
-
-                let t_finish = time::now_utc();
-                println!(
-                    "\tBottom Up Step: {} msec",
-                    (t_finish - t_start).num_milliseconds()
-                );
-
                 (awake_count >= old_awake_count) || (awake_count > graph.num_nodes() / BETA)
             }{}
 
             scout_count = 1;
         } else {
-            let t_start = time::now_utc();
-
             edges_to_check -= scout_count;
             scout_count = td_step(graph, &mut parent, &mut queue);
             queue.slide_window();
-
-            let t_finish = time::now_utc();
-            println!(
-                "\tTop Down Step: {} msec",
-                (t_finish - t_start).num_milliseconds()
-            );
         }
     }
 }

@@ -19,6 +19,10 @@ impl Generator {
     pub fn new(scale: usize, degree: usize) -> Self {
         let num_nodes = 11 << scale;
         let num_edges = num_nodes * degree;
+        dbg!(num_nodes);
+        dbg!(num_edges);
+        dbg!(degree);
+
 
         Self {
             scale,
@@ -47,11 +51,11 @@ impl Generator {
         let mut edge_list = Vec::with_capacity(self.num_edges);
         let uniform_distribution = rand::distributions::Uniform::from(0..self.num_nodes);
         edge_list.par_extend(
-            (0..self.num_nodes)
+            (0..self.num_edges)
                 .into_par_iter()
                 .step_by(self.block_size)
                 .flat_map(|block| {
-                    (block..std::cmp::min(block + self.block_size, self.num_nodes))
+                    (block..std::cmp::min(block + self.block_size, self.num_edges))
                         .into_par_iter()
                         .map(move |_| {
                             // let mut rng = SeedableRng::seed_from_u64(
