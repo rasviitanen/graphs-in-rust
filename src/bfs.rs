@@ -43,25 +43,31 @@ pub fn td_step<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 ) -> usize {
     let mut scout_count = 0;
     let mut new_queue = SlidingQueue::new();
+
     for u in &*queue {
+        println!("Processing: {}", u);
         graph.out_neigh(*u).into_iter().for_each(|v: E| {
-            let curr_val = parent[v.as_node()];
-            if curr_val.is_none() {
-                parent[v.as_node()] = Some(*u);
-                new_queue.push_back(v);  // FIXME: Not same as original code
-                scout_count += 1; // FIXME: Not same as original code
-            }
+            println!("\tEdge: {}", v.as_node());
+            new_queue.push_back(v.as_node());
+            scout_count += 1;
+            // let curr_val = parent.get(v.as_node());
+            // if let Some(cv) = curr_val {
+            //     if cv.is_none() {
+            //         parent.insert(v.as_node(), Some(*u));
+            //         new_queue.push_back(v); // FIXME: Not same as original code
+            //         scout_count += 1; // FIXME: Not same as original code
+            //     }
+            // } else {
+            //     println!("\tBAD");
+            // }
         });
     }
 
     new_queue.slide_window();
 
     for e in new_queue {
-        queue.push_back(e.as_node());
+        queue.push_back(e);
     }
-
-    queue.slide_window();
-
 
     scout_count
 }
@@ -103,28 +109,69 @@ pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     const ALPHA: usize = 15;
     const BETA: usize = 18;
 
+    let t_start = time::now_utc();
+
     let mut parent = init_parent(graph);
+    let t_finish = time::now_utc();
+    println!(
+        "\tInit Parent: {} msec",
+        (t_finish - t_start).num_milliseconds()
+    );
+
     parent[source] = Some(source);
     let mut queue: SlidingQueue<NodeId> = SlidingQueue::with_capacity(graph.num_nodes());
     queue.push_back(source);
     queue.slide_window();
 
-    let mut curr = BitVec::with_capacity(graph.num_nodes());
-    let mut front = BitVec::with_capacity(graph.num_nodes());
+    let mut curr = BitVec::from_elem(graph.num_nodes()*2, false);
+    let mut front = BitVec::from_elem(graph.num_nodes()*2, false);
 
     let mut edges_to_check = graph.num_edges_directed();
     let mut scout_count = graph.out_degree(source);
 
     while !queue.empty() {
         if scout_count > (edges_to_check / ALPHA) {
+            let t_start = time::now_utc();
             queue_to_bitmap(&queue, &mut front);
-            let awake_count = queue.size();
-            let old_awake_count = 0;
-            unimplemented!("BFS SHOULD NOT RUN HERE");
+            let t_finish = time::now_utc();
+            println!(
+                "\tQueue to Bitmap: {} msec",
+                (t_finish - t_start).num_milliseconds()
+            );
+
+            let mut awake_count = queue.size();
+            let mut old_awake_count = 0;
+            queue.slide_window();
+
+            while {
+                let t_start = time::now_utc();
+
+                old_awake_count = awake_count;
+                awake_count = bu_step(graph, &mut parent, &mut front, &mut curr);
+                unsafe{std::ptr::swap(&mut front, &mut curr)};
+
+                let t_finish = time::now_utc();
+                println!(
+                    "\tBottom Up Step: {} msec",
+                    (t_finish - t_start).num_milliseconds()
+                );
+
+                (awake_count >= old_awake_count) || (awake_count > graph.num_nodes() / BETA)
+            }{}
+
+            scout_count = 1;
         } else {
+            let t_start = time::now_utc();
+
             edges_to_check -= scout_count;
             scout_count = td_step(graph, &mut parent, &mut queue);
             queue.slide_window();
+
+            let t_finish = time::now_utc();
+            println!(
+                "\tTop Down Step: {} msec",
+                (t_finish - t_start).num_milliseconds()
+            );
         }
     }
 }

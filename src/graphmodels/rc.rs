@@ -101,13 +101,10 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn num_edges_directed(&self) -> usize {
-        println!("nu_edges_directed might be wrong");
         self.n_edges.get()
-
     }
 
     fn out_degree(&self, v: NodeId) -> usize {
-        println!("Looking for: {:?}", v);
         if let Some(found) = self.vertices.borrow().get(&v) {
             found.borrow().out_edges.len()
         } else {
@@ -137,15 +134,30 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn in_neigh(&self, v: NodeId) -> Range<WrappedNode<T>> {
-        unimplemented!();
+        if let Some(vertex) = self.vertices.borrow().get(&v) {
+            let mut edges = Vec::new();
+            for edge in vertex.borrow().in_edges.values() {
+                edges.push(WrappedNode::from_node(Rc::clone(edge)));
+            }
+            Box::new(edges.into_iter())
+        } else {
+            panic!("Vertex not found");
+        }
     }
 
     fn print_stats(&self) {
-        println!("Printing stats... oops");
+        println!("---------- GRAPH ----------");
+        println!("  Num Nodes          - {:?}", self.num_nodes());
+        println!("  Num Edges          - {:?}", self.num_edges());
+        println!("---------------------------");
     }
 
     fn vertices(&self) -> Range<WrappedNode<T>> {
         unimplemented!();
+    }
+
+    fn old_bfs(&self, v: NodeId) {
+        self.bfs(v, None);
     }
 }
 
@@ -196,30 +208,33 @@ impl<T> Graph<T> {
     }
 
 
-    // pub fn bfs(&self, start: usize, goal: Option<usize>) -> usize {
-    //     let mut queue = VecDeque::new();
-    //     let mut discovered = HashSet::new();
+    pub fn bfs(&self, start: usize, goal: Option<usize>) -> usize {
+        let mut queue = VecDeque::new();
+        let mut discovered = HashSet::new();
 
-    //     let start = self.find_vertex(start).unwrap();
-    //     discovered.insert(start.borrow().node_id);
-    //     queue.push_back(Rc::clone(&start));
+        let start = self.find_vertex(start).unwrap();
+        discovered.insert(start.borrow().node_id);
+        queue.push_back(Rc::clone(&start));
 
-    //     while let Some(node) = queue.pop_front() {
-    //         let locked_node = node.borrow();
-    //         for edge in locked_node.adj_list.values() {
-    //             let edge_node_id = edge.borrow().node_id;
+        while let Some(node) = queue.pop_front() {
+            let locked_node = node.borrow();
+            println!("Processing: {}", node.borrow().node_id);
+            for edge in locked_node.out_edges.values() {
+                let edge_node_id = edge.borrow().node_id;
 
-    //             if goal == Some(edge_node_id) {
-    //                 return discovered.len();
-    //             }
+                if goal == Some(edge_node_id) {
+                    return discovered.len();
+                }
 
-    //             if !discovered.contains(&edge_node_id) {
-    //                 discovered.insert(edge_node_id);
-    //                 queue.push_back(Rc::clone(&edge));
-    //             }
-    //         }
-    //     }
+                if !discovered.contains(&edge_node_id) {
+                    println!("\tEdge: {}", edge_node_id);
 
-    //     discovered.len()
-    // }
+                    discovered.insert(edge_node_id);
+                    queue.push_back(Rc::clone(&edge));
+                }
+            }
+        }
+
+        discovered.len()
+    }
 }

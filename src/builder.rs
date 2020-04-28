@@ -13,7 +13,7 @@ const SYMMETRIZE: bool = false;
 const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
 const FILE_NAME: &'static str = "";
-const SCALE: usize = 2;
+const SCALE: usize = 3;
 const DEGREE: usize = 5;
 
 
@@ -96,7 +96,7 @@ impl BuilderBase {
         graph
     }
 
-    fn squish_graph<V, E, G: CSRGraph<V, E>>(&self, graph: G) -> G {
+    fn squish_graph<V, E, G: CSRGraph<V, E>>(&self, graph: &mut G) -> G {
         unimplemented!("Squishing is not yet supported");
     }
 
@@ -109,9 +109,8 @@ impl BuilderBase {
             edge_list = generator.generate_edge_list(UNIFORM);
         }
 
-        dbg!(&edge_list);
-        let graph = self.make_graph_from_edge_list(&edge_list);
-        // self.squish_graph(graph) // FIXME: Enable squishing
+        let mut graph = self.make_graph_from_edge_list(&edge_list);
+        // self.squish_graph(&mut graph); //FIXME: impl Squishing
         graph
     }
 

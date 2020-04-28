@@ -22,4 +22,6 @@ pub trait CSRGraph<V, E> {
     fn print_stats(&self);
 
     fn vertices(&self) -> Range<V>;
+
+    fn old_bfs(&self, v: NodeId);
 }

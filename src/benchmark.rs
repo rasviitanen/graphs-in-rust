@@ -3,7 +3,7 @@ use rand::prelude::*;
 use crate::graph::CSRGraph;
 use std::marker::PhantomData;
 
-const NUM_TRIALS: usize = 10;
+const NUM_TRIALS: usize = 1;
 
 type GraphFunc<T> = Box<dyn FnMut(&T) -> ()>;
 type AnalysisFunc = Box<dyn Fn() -> ()>;
@@ -41,6 +41,8 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
 
     pub fn bfs_bound(&mut self) {
         let next = self.pick_next();
+        self.graph.old_bfs(next);
+        println!("#######################################");
         crate::bfs::do_bfs(&self.graph, next);
     }
 
@@ -71,7 +73,7 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
             let tStart = time::now_utc();
             let result = self.bfs_bound();
             let tFinish = time::now_utc();
-            total_time = (tStart - tFinish).num_milliseconds();
+            total_time = (tFinish- tStart).num_milliseconds();
             println!("\tTrial time {} msec", total_time);
         }
 
@@ -88,10 +90,10 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
         let mut total_time = 0;
 
         for iter in 0..NUM_TRIALS {
-            let tStart = time::now_utc();
+            let t_start = time::now_utc();
             let result = kernel(&self.graph);
-            let tFinish = time::now_utc();
-            total_time = (tStart - tFinish).num_milliseconds();
+            let t_finish = time::now_utc();
+            total_time += (t_finish - t_start).num_milliseconds();
             println!("\tTrial time {} msec", total_time);
         }
 

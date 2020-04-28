@@ -55,27 +55,27 @@ impl<T> SlidingQueue<T> {
 
 impl<T> IntoIterator for SlidingQueue<T> {
     type Item = T;
-    type IntoIter = std::iter::Take<std::vec::IntoIter<Self::Item>>;
+    type IntoIter = std::iter::Take<std::iter::Skip<std::vec::IntoIter<Self::Item>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.inner.into_iter().take(self.shared_out_end)
+        self.inner.into_iter().skip(self.shared_out_start).take(self.shared_out_end)
     }
 }
 
 impl<'a, T> IntoIterator for &'a SlidingQueue<T> {
     type Item = &'a T;
-    type IntoIter = std::iter::Take<Iter<'a, T>>;
+    type IntoIter = std::iter::Take<std::iter::Skip<Iter<'a, T>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.inner.iter().take(self.shared_out_end)
+        self.inner.iter().skip(self.shared_out_start).take(self.shared_out_end)
     }
 }
 
 impl<'a, T> IntoIterator for &'a mut SlidingQueue<T> {
     type Item = &'a mut T;
-    type IntoIter = std::iter::Take<IterMut<'a, T>>;
+    type IntoIter = std::iter::Take<std::iter::Skip<IterMut<'a, T>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.inner.iter_mut().take(self.shared_out_end)
+        self.inner.iter_mut().skip(self.shared_out_start).take(self.shared_out_end)
     }
 }
