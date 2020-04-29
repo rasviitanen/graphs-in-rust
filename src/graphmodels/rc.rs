@@ -131,6 +131,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             for edge in vertex.borrow().out_edges.values() {
                 edges.push(WrappedNode::from_node(Rc::clone(edge)));
             }
+            edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
             Box::new(edges.into_iter())
         } else {
             // panic!("Vertex not found");
@@ -144,6 +145,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             for edge in vertex.borrow().in_edges.values() {
                 edges.push(WrappedNode::from_node(Rc::clone(edge)));
             }
+            edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
             Box::new(edges.into_iter())
         } else {
             // panic!("Vertex not found");
@@ -163,6 +165,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         for edge in self.vertices.borrow().values() {
             edges.push(WrappedNode::from_node(Rc::clone(edge)));
         }
+        edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
         Box::new(edges.into_iter())
     }
 
@@ -258,8 +261,6 @@ impl<T> Graph<T> {
                 }
 
                 if !discovered.contains(&edge_node_id) {
-                    println!("\tEdge: {}", edge_node_id);
-
                     discovered.insert(edge_node_id);
                     queue.push_back(Rc::clone(&edge));
                 }

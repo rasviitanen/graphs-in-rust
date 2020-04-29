@@ -12,21 +12,29 @@ use rayon::slice::ParallelSlice;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+#[derive(Clone)]
+pub enum VisitStatus {
+    Negative(NodeId),
+    Positive(NodeId),
+}
+
 pub fn bu_step<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
-    parent: &mut Vec<Option<NodeId>>,
+    parent: &mut Vec<VisitStatus>,
     front: &mut BitVec,
     next: &mut BitVec,
 ) -> usize {
     let awake_count = AtomicUsize::new(0);
-    (0..graph.num_nodes()).into_iter().for_each(|u| {
-        if parent[u].is_none() {
-            for v in graph.in_neigh(u) {
-                if front[v.as_node()] {
-                    parent[v.as_node()] = Some(v.as_node());
-                    awake_count.fetch_add(1, Ordering::SeqCst);
-                    next.set(u, true);
-                    break;
+    graph.vertices().for_each(|u| {
+        if let VisitStatus::Negative(curr_val) = parent[u.as_node()] {
+            if curr_val != 0 {
+                for v in graph.in_neigh(u.as_node()) {
+                    if front[v.as_node()] {
+                        parent[v.as_node()] = VisitStatus::Positive(v.as_node());
+                        awake_count.fetch_add(1, Ordering::SeqCst);
+                        next.set(u.as_node(), true);
+                        break;
+                    }
                 }
             }
         }
@@ -38,28 +46,21 @@ pub fn bu_step<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 // FIXME: Make parallel
 pub fn td_step<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
-    parent: &mut Vec<Option<NodeId>>,
+    parent: &mut Vec<VisitStatus>,
     queue: &mut SlidingQueue<NodeId>,
 ) -> usize {
     let mut scout_count = 0;
     let mut new_queue = SlidingQueue::new();
 
     for u in &*queue {
-        // println!("Processing: {}", u);
         graph.out_neigh(*u).into_iter().for_each(|v: E| {
-            // println!("\tEdge: {}", v.as_node());
-            new_queue.push_back(v.as_node());
-            scout_count += 1;
-            // let curr_val = parent.get(v.as_node());
-            // if let Some(cv) = curr_val {
-            //     if cv.is_none() {
-            //         parent.insert(v.as_node(), Some(*u));
-            //         new_queue.push_back(v); // FIXME: Not same as original code
-            //         scout_count += 1; // FIXME: Not same as original code
-            //     }
-            // } else {
-            //     println!("\tBAD");
-            // }
+            if let VisitStatus::Negative(curr_val) = parent[v.as_node()] {
+                if curr_val != 0 {
+                    parent.insert(v.as_node(), VisitStatus::Positive(*u));
+                    new_queue.push_back(v.as_node());
+                    scout_count += curr_val;
+                }
+            }
         });
     }
 
@@ -73,17 +74,22 @@ pub fn td_step<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 }
 
 
-pub fn init_parent<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> Vec<Option<NodeId>> {
-    let mut parent = Vec::with_capacity(graph.num_nodes());
-    parent.extend(
-        (0..graph.num_nodes()).map(|n|
-            if graph.out_degree(n) != 0 {
-                Some(graph.out_degree(n)) // FIXME: Should be negated
-            } else {
-                None
-            }
-        )
-    );
+pub fn init_parent<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> Vec<VisitStatus> {
+    let mut parent = vec![VisitStatus::Negative(1); graph.num_nodes()*10];
+    // parent.extend(
+    //     (0..graph.vertices().map(|n|
+    //         if graph.out_degree(n.as_node()) != 0 {
+    //             VisitStatus::Negative(graph.out_degree(n))
+    //         } else {
+    //             VisitStatus::Negative(1)
+    //         }
+    //     )
+    // );
+    for v in graph.vertices() {
+        if graph.out_degree(v.as_node()) != 0 {
+            parent.insert(v.as_node(), VisitStatus::Negative(graph.out_degree(v.as_node())));
+        }
+    }
     parent
 }
 
@@ -94,7 +100,7 @@ fn queue_to_bitmap(queue: &SlidingQueue<NodeId>, bm: &mut BitVec) {
 }
 
 fn bitmap_to_queue<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, bm: &BitVec, queue: &mut SlidingQueue<NodeId>) {
-    for n in 0..graph.num_nodes() {
+    for n in 0..graph.num_nodes()*10 {
         if let Some(true) = bm.get(n) {
             queue.push_back(n);
         }
@@ -118,7 +124,7 @@ pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         (t_finish - t_start).num_milliseconds()
     );
 
-    parent[source] = Some(source);
+    parent[source] = VisitStatus::Positive(source);
     let mut queue: SlidingQueue<NodeId> = SlidingQueue::with_capacity(graph.num_nodes());
     queue.push_back(source);
     queue.slide_window();
@@ -134,16 +140,18 @@ pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
             queue_to_bitmap(&queue, &mut front);
 
             let mut awake_count = queue.size();
-            let mut old_awake_count = 0;
             queue.slide_window();
 
-            while {
-                old_awake_count = awake_count;
+            loop {
+                let old_awake_count = awake_count;
                 awake_count = bu_step(graph, &mut parent, &mut front, &mut curr);
                 unsafe{std::ptr::swap(&mut front, &mut curr)};
-                (awake_count >= old_awake_count) || (awake_count > graph.num_nodes() / BETA)
-            }{}
+                if (awake_count >= old_awake_count) || (awake_count > graph.num_nodes() / BETA) {
+                    break;
+                }
+            }
 
+            bitmap_to_queue(graph, &mut front, &mut queue);
             scout_count = 1;
         } else {
             edges_to_check -= scout_count;

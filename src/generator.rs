@@ -7,6 +7,8 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
+use std::fs::File;
+use std::io::{prelude::*, BufReader};
 
 pub struct Generator {
     scale: usize,
@@ -94,6 +96,28 @@ impl Generator {
             "\tGenerate took {} msec",
             (tFinish - tStart).num_milliseconds()
         );
+
+        edge_list
+    }
+
+    pub fn generate_edge_list_from_file(&self, file: &str) -> EdgeList {
+        let mut edge_list = Vec::new();
+
+        let file = File::open(file).unwrap();
+        let reader = BufReader::new(file);
+
+
+        for line in reader.lines() {
+            let line = line.unwrap();
+            let line_parts: Vec<_> = line.split(|c| c == ' ' || c == '\t').collect();
+
+            let connection = (
+                line_parts[0].parse::<usize>().unwrap(),
+                line_parts[1].parse::<usize>().unwrap(),
+            );
+    
+            edge_list.push(connection);
+        }
 
         edge_list
     }

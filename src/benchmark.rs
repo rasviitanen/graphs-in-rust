@@ -41,6 +41,8 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
 
     pub fn bfs_bound(&mut self) {
         let next = self.pick_next();
+        self.graph.old_bfs(next);
+        println!("-.-.-.-.-.-.-.-.-.-");
         crate::bfs::do_bfs(&self.graph, next);
     }
 
@@ -76,6 +78,29 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
         }
 
         println!("\tBenchmark took {} msec", total_time);
+    }
+
+
+    pub fn benchmark_kernel_pr(
+        &self,
+    ) {
+        self.benchmark_kernel(
+            Box::new(|g: &G| {crate::pr::page_rank_pull(g, 20, Some(0.0004));} ),
+            Box::new(|| {}),
+            Box::new(|| {}),
+        );
+    }
+
+    /// Triangle Counting (TC) - Order invariant with possible relabelling
+    /// FIXME: Relabelling is not supported yet
+    pub fn benchmark_kernel_tc(
+        &self,
+    ) {
+        self.benchmark_kernel(
+            Box::new(|g: &G| crate::tc::hybrid(g) ),
+            Box::new(|| {}),
+            Box::new(|| {}),
+        );
     }
 
     pub fn benchmark_kernel(

@@ -12,10 +12,10 @@ use rayon::iter::IntoParallelRefIterator;
 const SYMMETRIZE: bool = false;
 const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
-const FILE_NAME: &'static str = "";
+const FILE_NAME: &'static str = ""; // datasets/petster.out
 const INVERT: bool = false;
-const SCALE: usize = 10;
-const DEGREE: usize = 20;
+const SCALE: usize = 1;
+const DEGREE: usize = 2;
 
 pub struct BuilderBase {
     symmetrize: bool,
@@ -128,15 +128,15 @@ impl BuilderBase {
 
     pub fn make_graph<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(&mut self) -> G {
         let edge_list;
+        let generator = Generator::new(SCALE, DEGREE);
         if FILE_NAME != "" {
-            unimplemented!("Loading from file is not supported");
+            edge_list = generator.generate_edge_list_from_file(FILE_NAME);
         } else {
-            let generator = Generator::new(SCALE, DEGREE);
             edge_list = generator.generate_edge_list(UNIFORM);
         }
 
         let mut graph = self.make_graph_from_edge_list(&edge_list);
-        self.squish_graph(&mut graph); //FIXME: impl Squishing
+        // self.squish_graph(&mut graph); //FIXME: impl Squishing
         graph
     }
 

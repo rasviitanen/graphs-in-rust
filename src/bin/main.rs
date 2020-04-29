@@ -10,8 +10,10 @@ fn main() {
     let graph: graphmodels::rc::Graph<usize> = builder.make_graph();
     let mut source_picker = SourcePicker::new(graph, START_VERTEX);
 
-    source_picker.benchmark_kernel_bfs(
-        Box::new(|| {}),
-        Box::new(|| {}),
-    );
+    // source_picker.benchmark_kernel_bfs(
+    //     Box::new(|| {}),
+    //     Box::new(|| {}),
+    // );
+
+    source_picker.benchmark_kernel_pr();
 }
