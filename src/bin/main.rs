@@ -1,8 +1,8 @@
-use gapbs::builder::BuilderBase;
 use gapbs::benchmark::SourcePicker;
-use gapbs::types::*;
-use gapbs::graphmodels;
 use gapbs::bfs;
+use gapbs::builder::BuilderBase;
+use gapbs::graphmodels;
+use gapbs::types::*;
 
 fn main() {
     const START_VERTEX: NodeId = 3;

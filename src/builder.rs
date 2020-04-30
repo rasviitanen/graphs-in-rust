@@ -1,18 +1,18 @@
-use crate::types::*;
-use crate::graph::CSRGraph;
 use crate::generator::Generator;
-use std::sync::atomic::{Ordering, AtomicUsize};
+use crate::graph::CSRGraph;
+use crate::types::*;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
+use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
-use rayon::iter::IntoParallelRefIterator;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const SYMMETRIZE: bool = false;
 const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
-const FILE_NAME: &'static str = ""; // datasets/petster.out
+const FILE_NAME: &'static str = ""; // "datasets/dolphins.out"
 const INVERT: bool = false;
 const SCALE: usize = 1;
 const DEGREE: usize = 2;
@@ -21,7 +21,6 @@ pub struct BuilderBase {
     symmetrize: bool,
     needs_weights: bool,
     num_nodes: Option<usize>,
-
 }
 
 impl BuilderBase {
@@ -49,7 +48,10 @@ impl BuilderBase {
     }
 
     pub fn count_degrees(&self, edge_list: &EdgeList, transpose: bool) -> Vec<usize> {
-        let mut degrees: Vec<AtomicUsize> = (0..self.num_nodes.expect("`num_nodes` is not set")).into_iter().map(|_| AtomicUsize::new(0)).collect();
+        let mut degrees: Vec<AtomicUsize> = (0..self.num_nodes.expect("`num_nodes` is not set"))
+            .into_iter()
+            .map(|_| AtomicUsize::new(0))
+            .collect();
 
         edge_list.par_iter().for_each(|e| {
             if self.symmetrize || (!self.symmetrize && !transpose) {
@@ -64,10 +66,9 @@ impl BuilderBase {
         degrees.drain(..).map(|d| d.into_inner()).collect()
     }
 
-
     pub fn make_graph_from_edge_list<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         &mut self,
-        edge_list: &EdgeList
+        edge_list: &EdgeList,
     ) -> G {
         let t_start = time::now_utc();
 
@@ -81,10 +82,16 @@ impl BuilderBase {
 
         let graph;
         if self.symmetrize {
-            graph = G::build_directed(self.num_nodes.expect("`num_nodes` is not specified"), edge_list)
+            graph = G::build_directed(
+                self.num_nodes.expect("`num_nodes` is not specified"),
+                edge_list,
+            )
         } else {
             println!("Building undirected");
-            graph = G::build_undirected(self.num_nodes.expect("`num_nodes` is not specified"), edge_list)
+            graph = G::build_undirected(
+                self.num_nodes.expect("`num_nodes` is not specified"),
+                edge_list,
+            )
         }
 
         let t_finish = time::now_utc();
@@ -96,10 +103,7 @@ impl BuilderBase {
         graph
     }
 
-    fn squish_csr<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
-        graph: &mut G,
-        transpose: bool
-    ) {
+    fn squish_csr<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &mut G, transpose: bool) {
         for v in graph.vertices() {
             let mut neighs: Vec<_>;
             if transpose {
@@ -115,7 +119,6 @@ impl BuilderBase {
                 neighs.retain(|e| e.as_node() != v.as_node());
                 graph.replace_out_edges(v.as_node(), neighs);
             }
-
         }
     }
 
@@ -136,7 +139,7 @@ impl BuilderBase {
         }
 
         let mut graph = self.make_graph_from_edge_list(&edge_list);
-        // self.squish_graph(&mut graph); //FIXME: impl Squishing
+        self.squish_graph(&mut graph); //FIXME: impl Squishing
         graph
     }
 

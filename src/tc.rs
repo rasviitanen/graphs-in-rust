@@ -1,11 +1,9 @@
-use crate::types::*;
 use crate::graph::CSRGraph;
+use crate::types::*;
 
 /// Has been manually verified,
 /// Only works on undirected, with sorted nodes
-fn ordered_count<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
-    graph: &G
-) -> usize {
+fn ordered_count<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usize {
     let mut total = 0;
     for u in graph.vertices() {
         let u = u.as_node();
@@ -64,16 +62,12 @@ fn ordered_count<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 //     }
 // }
 
-fn worth_relabelling<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
-    graph: &G
-) -> bool {
+fn worth_relabelling<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> bool {
     // FIXME: Implement this
     false
 }
 
-pub fn hybrid<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
-    graph: &G
-) {
+pub fn hybrid<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) {
     if worth_relabelling(graph) {
         unimplemented!("Relabeling is not supported");
     } else {

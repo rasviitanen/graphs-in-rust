@@ -1,13 +1,13 @@
-use crate::types::*;
 use crate::graph::CSRGraph;
 use crate::slidingqueue::SlidingQueue;
+use crate::types::*;
 use bit_vec::BitVec;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
+use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
-use rayon::iter::IntoParallelRefIterator;
 use rayon::slice::ParallelSlice;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -73,9 +73,8 @@ pub fn td_step<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     scout_count
 }
 
-
 pub fn init_parent<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> Vec<VisitStatus> {
-    let mut parent = vec![VisitStatus::Negative(1); graph.num_nodes()*10];
+    let mut parent = vec![VisitStatus::Negative(1); graph.num_nodes() * 10];
     // parent.extend(
     //     (0..graph.vertices().map(|n|
     //         if graph.out_degree(n.as_node()) != 0 {
@@ -87,7 +86,10 @@ pub fn init_parent<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> Vec<Vi
     // );
     for v in graph.vertices() {
         if graph.out_degree(v.as_node()) != 0 {
-            parent.insert(v.as_node(), VisitStatus::Negative(graph.out_degree(v.as_node())));
+            parent.insert(
+                v.as_node(),
+                VisitStatus::Negative(graph.out_degree(v.as_node())),
+            );
         }
     }
     parent
@@ -99,8 +101,12 @@ fn queue_to_bitmap(queue: &SlidingQueue<NodeId>, bm: &mut BitVec) {
     }
 }
 
-fn bitmap_to_queue<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, bm: &BitVec, queue: &mut SlidingQueue<NodeId>) {
-    for n in 0..graph.num_nodes()*10 {
+fn bitmap_to_queue<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
+    graph: &G,
+    bm: &BitVec,
+    queue: &mut SlidingQueue<NodeId>,
+) {
+    for n in 0..graph.num_nodes() * 10 {
         if let Some(true) = bm.get(n) {
             queue.push_back(n);
         }
@@ -108,10 +114,7 @@ fn bitmap_to_queue<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, bm: &BitV
     queue.slide_window();
 }
 
-pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
-    graph: &G,
-    source: NodeId,
-) {
+pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, source: NodeId) {
     const ALPHA: usize = 15;
     const BETA: usize = 18;
 
@@ -129,8 +132,8 @@ pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     queue.push_back(source);
     queue.slide_window();
 
-    let mut curr = BitVec::from_elem(graph.num_nodes()*10, false);
-    let mut front = BitVec::from_elem(graph.num_nodes()*10, false);
+    let mut curr = BitVec::from_elem(graph.num_nodes() * 10, false);
+    let mut front = BitVec::from_elem(graph.num_nodes() * 10, false);
 
     let mut edges_to_check = graph.num_edges_directed();
     let mut scout_count = graph.out_degree(source);
@@ -145,7 +148,7 @@ pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
             loop {
                 let old_awake_count = awake_count;
                 awake_count = bu_step(graph, &mut parent, &mut front, &mut curr);
-                unsafe{std::ptr::swap(&mut front, &mut curr)};
+                unsafe { std::ptr::swap(&mut front, &mut curr) };
                 if (awake_count >= old_awake_count) || (awake_count > graph.num_nodes() / BETA) {
                     break;
                 }

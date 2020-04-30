@@ -25,7 +25,6 @@ impl Generator {
         dbg!(num_edges);
         dbg!(degree);
 
-
         Self {
             scale,
             num_nodes,
@@ -106,7 +105,6 @@ impl Generator {
         let file = File::open(file).unwrap();
         let reader = BufReader::new(file);
 
-
         for line in reader.lines() {
             let line = line.unwrap();
             let line_parts: Vec<_> = line.split(|c| c == ' ' || c == '\t').collect();
@@ -115,7 +113,7 @@ impl Generator {
                 line_parts[0].parse::<usize>().unwrap(),
                 line_parts[1].parse::<usize>().unwrap(),
             );
-    
+
             edge_list.push(connection);
         }
 

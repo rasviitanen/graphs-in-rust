@@ -1,7 +1,6 @@
 use std::slice::Iter;
 use std::slice::IterMut;
 
-
 pub struct SlidingQueue<T> {
     inner: Vec<T>,
     shared_in: usize,
@@ -16,7 +15,7 @@ impl<T> SlidingQueue<T> {
             shared_in: 0,
             shared_out_start: 0,
             shared_out_end: 0,
-        }    
+        }
     }
 
     pub fn with_capacity(size_hint: usize) -> Self {
@@ -25,9 +24,9 @@ impl<T> SlidingQueue<T> {
             shared_in: 0,
             shared_out_start: 0,
             shared_out_end: 0,
-        }    
+        }
     }
-    
+
     pub fn push_back(&mut self, entry: T) {
         self.shared_in += 1;
         self.inner.push(entry);
@@ -58,7 +57,10 @@ impl<T> IntoIterator for SlidingQueue<T> {
     type IntoIter = std::iter::Take<std::iter::Skip<std::vec::IntoIter<Self::Item>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.inner.into_iter().skip(self.shared_out_start).take(self.shared_out_end)
+        self.inner
+            .into_iter()
+            .skip(self.shared_out_start)
+            .take(self.shared_out_end)
     }
 }
 
@@ -67,7 +69,10 @@ impl<'a, T> IntoIterator for &'a SlidingQueue<T> {
     type IntoIter = std::iter::Take<std::iter::Skip<Iter<'a, T>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.inner.iter().skip(self.shared_out_start).take(self.shared_out_end)
+        self.inner
+            .iter()
+            .skip(self.shared_out_start)
+            .take(self.shared_out_end)
     }
 }
 
@@ -76,6 +81,9 @@ impl<'a, T> IntoIterator for &'a mut SlidingQueue<T> {
     type IntoIter = std::iter::Take<std::iter::Skip<IterMut<'a, T>>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.inner.iter_mut().skip(self.shared_out_start).take(self.shared_out_end)
+        self.inner
+            .iter_mut()
+            .skip(self.shared_out_start)
+            .take(self.shared_out_end)
     }
 }

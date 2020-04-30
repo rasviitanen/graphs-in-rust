@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct WrappedNode<T> {
-    inner: Rc<RefCell<Node<T>>>
+    inner: Rc<RefCell<Node<T>>>,
 }
 
 impl<T> AsNode for WrappedNode<T> {
@@ -25,9 +25,7 @@ impl<T> std::ops::Deref for WrappedNode<T> {
 
 impl<T> WrappedNode<T> {
     pub fn from_node(node: Rc<RefCell<Node<T>>>) -> Self {
-        Self {
-            inner: node,
-        }
+        Self { inner: node }
     }
 }
 
@@ -35,8 +33,7 @@ pub struct Node<T> {
     node_id: NodeId,
     value: Option<T>,
     in_edges: HashMap<usize, WrappedNode<T>>,
-    out_edges: HashMap<usize,  WrappedNode<T>>,
-
+    out_edges: HashMap<usize, WrappedNode<T>>,
 }
 
 impl<T> Node<T> {
@@ -53,12 +50,16 @@ impl<T> Node<T> {
 
     fn add_in_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>) {
         let node_id = edge.borrow().node_id;
-        this.borrow_mut().in_edges.insert(node_id, WrappedNode::from_node(Rc::clone(edge)));
+        this.borrow_mut()
+            .in_edges
+            .insert(node_id, WrappedNode::from_node(Rc::clone(edge)));
     }
 
     fn add_out_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>) {
         let node_id = edge.borrow().node_id;
-        this.borrow_mut().out_edges.insert(node_id, WrappedNode::from_node(Rc::clone(edge)));
+        this.borrow_mut()
+            .out_edges
+            .insert(node_id, WrappedNode::from_node(Rc::clone(edge)));
     }
 }
 
@@ -199,7 +200,7 @@ impl<T> Graph<T> {
         Graph {
             vertices: RefCell::new(HashMap::new()),
             n_edges: Cell::new(0),
-            directed
+            directed,
         }
     }
 
@@ -223,24 +224,28 @@ impl<T> Graph<T> {
         ) {
             if !directed {
                 Node::add_in_edge(&vertex_node, &edge_node);
-                self.n_edges.update(|x| x + 1 );
+                self.n_edges.update(|x| x + 1);
             }
             Node::add_out_edge(&vertex_node, &edge_node);
-            self.n_edges.update(|x| x + 1 );
+            self.n_edges.update(|x| x + 1);
         } else {
             panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
         }
     }
 
-    pub fn connect(&self, vertex_node: &Rc<RefCell<Node<T>>>, edge_node: &Rc<RefCell<Node<T>>>, directed: bool) {
+    pub fn connect(
+        &self,
+        vertex_node: &Rc<RefCell<Node<T>>>,
+        edge_node: &Rc<RefCell<Node<T>>>,
+        directed: bool,
+    ) {
         if !directed {
             Node::add_in_edge(&vertex_node, &edge_node);
-            self.n_edges.update(|x| x + 1 );
+            self.n_edges.update(|x| x + 1);
         }
         Node::add_out_edge(&vertex_node, &edge_node);
-        self.n_edges.update(|x| x + 1 );
+        self.n_edges.update(|x| x + 1);
     }
-
 
     pub fn bfs(&self, start: usize, goal: Option<usize>) -> usize {
         let mut queue = VecDeque::new();

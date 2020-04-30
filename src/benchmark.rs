@@ -1,6 +1,6 @@
+use crate::graph::CSRGraph;
 use crate::types::*;
 use rand::prelude::*;
-use crate::graph::CSRGraph;
 use std::marker::PhantomData;
 
 const NUM_TRIALS: usize = 1;
@@ -8,7 +8,6 @@ const NUM_TRIALS: usize = 1;
 type GraphFunc<T> = Box<dyn FnMut(&T) -> ()>;
 type AnalysisFunc = Box<dyn Fn() -> ()>;
 type VerifyFunc = Box<dyn Fn() -> ()>;
-
 
 pub struct SourcePicker<V: AsNode, E: AsNode, G: CSRGraph<V, E>> {
     given_source: Option<NodeId>,
@@ -56,16 +55,10 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
             if self.graph.out_degree(source) != 0 {
                 return source;
             }
-
         }
-
     }
 
-    pub fn benchmark_kernel_bfs(
-        &mut self,
-        stats: AnalysisFunc,
-        verify: VerifyFunc,
-    ) {
+    pub fn benchmark_kernel_bfs(&mut self, stats: AnalysisFunc, verify: VerifyFunc) {
         self.graph.print_stats();
         let mut total_time = 0;
 
@@ -73,19 +66,18 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
             let tStart = time::now_utc();
             let result = self.bfs_bound();
             let tFinish = time::now_utc();
-            total_time = (tFinish- tStart).num_milliseconds();
+            total_time = (tFinish - tStart).num_milliseconds();
             println!("\tTrial time {} msec", total_time);
         }
 
         println!("\tBenchmark took {} msec", total_time);
     }
 
-
-    pub fn benchmark_kernel_pr(
-        &self,
-    ) {
+    pub fn benchmark_kernel_pr(&self) {
         self.benchmark_kernel(
-            Box::new(|g: &G| {crate::pr::page_rank_pull(g, 20, Some(0.0004));} ),
+            Box::new(|g: &G| {
+                crate::pr::page_rank_pull(g, 20, Some(0.0004));
+            }),
             Box::new(|| {}),
             Box::new(|| {}),
         );
@@ -93,11 +85,9 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
 
     /// Triangle Counting (TC) - Order invariant with possible relabelling
     /// FIXME: Relabelling is not supported yet
-    pub fn benchmark_kernel_tc(
-        &self,
-    ) {
+    pub fn benchmark_kernel_tc(&self) {
         self.benchmark_kernel(
-            Box::new(|g: &G| crate::tc::hybrid(g) ),
+            Box::new(|g: &G| crate::tc::hybrid(g)),
             Box::new(|| {}),
             Box::new(|| {}),
         );
