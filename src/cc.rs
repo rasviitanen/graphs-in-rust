@@ -150,8 +150,6 @@ pub fn afforest<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     // Finally, `compress` for final convergence
     compress(graph, &mut comp);
     dbg!(verifier(graph, &comp));
-    dbg!(&comp);
-
     comp
 }
 

@@ -23,34 +23,26 @@ pub fn page_rank_pull<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     let init_score = 1.0 / graph.num_nodes() as f64;
     let base_score = (1.0 - K_DAMP) / graph.num_nodes() as f64;
 
-    let mut scores = HashMap::with_capacity(graph.num_nodes());
-    let mut outgoing_contrib = HashMap::with_capacity(graph.num_nodes());
+    let mut scores = vec![init_score; graph.num_nodes()];
+    let mut outgoing_contrib = vec![0.0; graph.num_nodes()];
 
     for i in 0..max_iters {
         let mut error = 0.0;
 
         for n in 0..graph.num_nodes() {
-            // FIXME: Should not be if/else, but division with zero
-            // results in inf
-            if graph.out_degree(n) != 0 {
-                outgoing_contrib.insert(
-                    n,
-                    scores.get(&n).unwrap_or(&init_score) / graph.out_degree(n) as f64,
-                );
-            }
+            outgoing_contrib[n] = scores[n] / graph.out_degree(n) as f64;
         }
 
-        for u in graph.vertices() {
+        for u in 0..graph.num_nodes() {
             let mut incoming_total = 0.0;
 
-            for v in graph.in_neigh(u.as_node()) {
-                incoming_total += outgoing_contrib.get(&v.as_node()).unwrap_or(&0.0);
+            for v in graph.in_neigh(u) {
+                incoming_total += outgoing_contrib[v.as_node()];
             }
 
-            let old_score = *scores.get(&u.as_node()).unwrap_or(&init_score);
-            let new_score = base_score + K_DAMP * incoming_total;
-            scores.insert(u.as_node(), new_score);
-            error += f64::abs(new_score - old_score);
+            let old_score = scores[u];
+            scores[u] = base_score + K_DAMP * incoming_total;
+            error += f64::abs(scores[u] - old_score);
         }
 
         if error < epsilon {
@@ -58,9 +50,9 @@ pub fn page_rank_pull<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         }
     }
 
-    // assert!(verifier(graph, &scores, 0.0004));
+    assert!(verifier(graph, &scores, 0.0004));
     dbg!(&scores);
-    scores.values().map(|x| *x).collect()
+    scores
 }
 
 pub fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
