@@ -14,8 +14,8 @@ const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
 const FILE_NAME: &'static str = ""; // "datasets/dolphins.out"
 const INVERT: bool = false;
-const SCALE: usize = 1;
-const DEGREE: usize = 2;
+const SCALE: usize = 3;
+const DEGREE: usize = 5;
 
 pub struct BuilderBase {
     symmetrize: bool,
@@ -37,14 +37,13 @@ impl BuilderBase {
     }
 
     pub fn find_max_node_id(edge_list: &EdgeList) -> usize {
-        let mut max_seen = AtomicUsize::new(0);
-        edge_list.par_iter().for_each(|e| {
-            let current_max = max_seen.load(Ordering::SeqCst);
-            max_seen.store(std::cmp::max(current_max, e.0), Ordering::SeqCst);
-            max_seen.store(std::cmp::max(current_max, e.1), Ordering::SeqCst);
+        let mut max_seen = 0;
+        edge_list.iter().for_each(|e| {
+            max_seen = std::cmp::max(max_seen, e.0);
+            max_seen = std::cmp::max(max_seen, e.1);
         });
 
-        max_seen.into_inner()
+        max_seen
     }
 
     pub fn count_degrees(&self, edge_list: &EdgeList, transpose: bool) -> Vec<usize> {
@@ -73,7 +72,7 @@ impl BuilderBase {
         let t_start = time::now_utc();
 
         if self.num_nodes.is_none() {
-            self.num_nodes = Some(Self::find_max_node_id(edge_list));
+            self.num_nodes = Some(Self::find_max_node_id(edge_list) + 1);
         }
 
         if self.needs_weights {
@@ -94,6 +93,7 @@ impl BuilderBase {
             )
         }
 
+        println!("GRAPH BUILDING IS DONE");
         let t_finish = time::now_utc();
         println!(
             "\tBuild Time: {} msec",
@@ -111,7 +111,7 @@ impl BuilderBase {
                 neighs.sort_by(|a, b| a.as_node().partial_cmp(&b.as_node()).unwrap());
                 neighs.dedup_by(|a, b| a.as_node() == b.as_node());
                 neighs.retain(|e| e.as_node() != v.as_node());
-                graph.replace_out_edges(v.as_node(), neighs);
+                graph.replace_in_edges(v.as_node(), neighs);
             } else {
                 neighs = graph.out_neigh(v.as_node()).collect();
                 neighs.sort_by(|a, b| a.as_node().partial_cmp(&b.as_node()).unwrap());
@@ -133,13 +133,14 @@ impl BuilderBase {
         let edge_list;
         let generator = Generator::new(SCALE, DEGREE);
         if FILE_NAME != "" {
+            dbg!("Generating edge list from file");
             edge_list = generator.generate_edge_list_from_file(FILE_NAME);
         } else {
             edge_list = generator.generate_edge_list(UNIFORM);
         }
 
         let mut graph = self.make_graph_from_edge_list(&edge_list);
-        self.squish_graph(&mut graph); //FIXME: impl Squishing
+        self.squish_graph(&mut graph);
         graph
     }
 

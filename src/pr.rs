@@ -1,3 +1,9 @@
+//! Will return pagerank scores for all vertices once total change < epsilon
+//! This PR implementation uses the traditional iterative approach. This is done
+//! to ease comparisons to other implementations (often use same algorithm), but
+//! it is not necesarily the fastest way to implement it. It does perform the
+//! updates in the pull direction to remove the need for atomics.
+
 use crate::graph::CSRGraph;
 use crate::types::*;
 use std::collections::HashMap;
@@ -24,7 +30,7 @@ pub fn page_rank_pull<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         let mut error = 0.0;
 
         for n in 0..graph.num_nodes() {
-            // FIXME: Should not be if/else, but division with zero¨
+            // FIXME: Should not be if/else, but division with zero
             // results in inf
             if graph.out_degree(n) != 0 {
                 outgoing_contrib.insert(

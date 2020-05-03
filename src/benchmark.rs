@@ -18,7 +18,7 @@ pub struct SourcePicker<V: AsNode, E: AsNode, G: CSRGraph<V, E>> {
 }
 
 impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
-    pub fn new(graph: G, given_source: NodeId) -> Self {
+    pub fn new(graph: G) -> Self {
         Self {
             given_source: None,
             rng: rand::thread_rng(),
@@ -38,6 +38,7 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
         }
     }
 
+    /// Executes BFS with a suitable start node
     pub fn bfs_bound(&mut self) {
         let next = self.pick_next();
         self.graph.old_bfs(next);
@@ -45,6 +46,10 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
         crate::bfs::do_bfs(&self.graph, next);
     }
 
+    /// Picks a vertex from the graph using a uniform distribution
+    ///
+    /// Loops infinitely if the picked vertex does not exist, or if it
+    /// does not have any edges.
     pub fn pick_next(&mut self) -> NodeId {
         if let Some(gs) = self.given_source {
             return gs;
@@ -58,21 +63,23 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
         }
     }
 
+    /// Benchmarks BFS (direction optimizing)
     pub fn benchmark_kernel_bfs(&mut self, stats: AnalysisFunc, verify: VerifyFunc) {
         self.graph.print_stats();
         let mut total_time = 0;
 
         for iter in 0..NUM_TRIALS {
-            let tStart = time::now_utc();
+            let t_start = time::now_utc();
             let result = self.bfs_bound();
-            let tFinish = time::now_utc();
-            total_time = (tFinish - tStart).num_milliseconds();
+            let t_finish = time::now_utc();
+            total_time = (t_finish - t_start).num_milliseconds();
             println!("\tTrial time {} msec", total_time);
         }
 
         println!("\tBenchmark took {} msec", total_time);
     }
 
+    /// Benchmarks PageRank with `max_iters = 20` and `epsilon = 0.0004`
     pub fn benchmark_kernel_pr(&self) {
         self.benchmark_kernel(
             Box::new(|g: &G| {
@@ -93,6 +100,15 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
         );
     }
 
+    pub fn benchmark_kernel_cc(&self) {
+        self.benchmark_kernel(
+            Box::new(|g: &G| { crate::cc::afforest(g, None); }),
+            Box::new(|| {}),
+            Box::new(|| {}),
+        );
+    }
+
+    /// Benchmarks a given `kernel`
     pub fn benchmark_kernel(
         &self,
         mut kernel: GraphFunc<G>,

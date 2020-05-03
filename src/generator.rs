@@ -19,7 +19,7 @@ pub struct Generator {
 
 impl Generator {
     pub fn new(scale: usize, degree: usize) -> Self {
-        let num_nodes = 11 << scale;
+        let num_nodes = 1 << scale;
         let num_edges = num_nodes * degree;
         dbg!(num_nodes);
         dbg!(num_edges);
@@ -81,19 +81,18 @@ impl Generator {
     }
 
     pub fn generate_edge_list(&self, uniform: bool) -> EdgeList {
-        let edge_list;
-        let tStart = time::now_utc();
+        let t_start = time::now_utc();
 
-        if uniform {
-            edge_list = self.make_uniform_edge_list();
+        let edge_list = if uniform {
+            self.make_uniform_edge_list()
         } else {
-            edge_list = self.make_rmat_edge_list();
-        }
+            self.make_rmat_edge_list()
+        };
 
-        let tFinish = time::now_utc();
+        let t_finish = time::now_utc();
         println!(
             "\tGenerate took {} msec",
-            (tFinish - tStart).num_milliseconds()
+            (t_finish - t_start).num_milliseconds()
         );
 
         edge_list

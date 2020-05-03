@@ -72,9 +72,11 @@ pub struct Graph<T> {
 impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let graph = Graph::new(true);
+        for v in 0..num_nodes {
+            graph.add_vertex(v, None);
+        }
+
         for (v, e) in edge_list {
-            graph.add_vertex(*v, None);
-            graph.add_vertex(*e, None);
             graph.add_edge(*v, *e, true)
         }
         graph
@@ -82,9 +84,11 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
 
     fn build_undirected(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let graph = Graph::new(false);
+        println!("Building undirected, with {} nodes", num_nodes);
+        for v in 0..num_nodes {
+            graph.add_vertex(v, None);
+        }
         for (v, e) in edge_list {
-            graph.add_vertex(*v, None);
-            graph.add_vertex(*e, None);
             graph.add_edge(*v, *e, false);
         }
 
@@ -122,7 +126,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         if let Some(found) = self.vertices.borrow().get(&v) {
             found.borrow().in_edges.len()
         } else {
-            0
+            panic!("Vertex not found");
         }
     }
 
@@ -135,8 +139,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
             Box::new(edges.into_iter())
         } else {
-            // panic!("Vertex not found");
-            Box::new(Vec::new().into_iter())
+            panic!("Vertex not found");
         }
     }
 
@@ -149,8 +152,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
             Box::new(edges.into_iter())
         } else {
-            // panic!("Vertex not found");
-            Box::new(Vec::new().into_iter())
+            panic!("Vertex not found");
         }
     }
 
@@ -224,11 +226,11 @@ impl<T> Graph<T> {
         ) {
             if !directed {
                 Node::add_in_edge(&vertex_node, &edge_node);
-                self.n_edges.update(|x| x + 1);
             }
             Node::add_out_edge(&vertex_node, &edge_node);
             self.n_edges.update(|x| x + 1);
         } else {
+            dbg!(vertex, edge, self.vertices.borrow().len());
             panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
         }
     }
@@ -241,7 +243,6 @@ impl<T> Graph<T> {
     ) {
         if !directed {
             Node::add_in_edge(&vertex_node, &edge_node);
-            self.n_edges.update(|x| x + 1);
         }
         Node::add_out_edge(&vertex_node, &edge_node);
         self.n_edges.update(|x| x + 1);
