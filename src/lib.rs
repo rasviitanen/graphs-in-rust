@@ -1,5 +1,5 @@
 #![feature(cell_update)]
-pub const K_RAND_SEED: usize = 27491095;
+pub const K_RAND_SEED: usize = 52;
 
 /// Performs the benchmarks
 pub mod benchmark;

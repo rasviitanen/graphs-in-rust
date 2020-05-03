@@ -48,18 +48,30 @@ impl<T> Node<T> {
         Rc::new(RefCell::new(node))
     }
 
-    fn add_in_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>) {
+    fn add_in_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>)  -> bool {
         let node_id = edge.borrow().node_id;
+
+        // Disable self-edges
+        if this.borrow().node_id == node_id {
+            return false;
+        }
+
         this.borrow_mut()
             .in_edges
-            .insert(node_id, WrappedNode::from_node(Rc::clone(edge)));
+            .insert(node_id, WrappedNode::from_node(Rc::clone(edge))).is_none()
     }
 
-    fn add_out_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>) {
+    fn add_out_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>) -> bool {
         let node_id = edge.borrow().node_id;
+
+        // Disable self-edges
+        if this.borrow().node_id == node_id {
+            return false;
+        }
+
         this.borrow_mut()
             .out_edges
-            .insert(node_id, WrappedNode::from_node(Rc::clone(edge)));
+            .insert(node_id, WrappedNode::from_node(Rc::clone(edge))).is_none()
     }
 }
 
@@ -110,7 +122,11 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn num_edges_directed(&self) -> usize {
-        self.n_edges.get()
+        let mut sum = 0;
+        for v in self.vertices() {
+            sum += v.borrow().out_edges.len();
+        }
+        sum
     }
 
     fn out_degree(&self, v: NodeId) -> usize {
@@ -159,7 +175,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     fn print_stats(&self) {
         println!("---------- GRAPH ----------");
         println!("  Num Nodes          - {:?}", self.num_nodes());
-        println!("  Num Edges          - {:?}", self.num_edges());
+        println!("  Num Edges          - {:?}", self.num_edges_directed());
         println!("---------------------------");
     }
 
@@ -225,10 +241,14 @@ impl<T> Graph<T> {
             self.vertices.borrow().get(&edge),
         ) {
             if !directed {
-                Node::add_in_edge(&vertex_node, &edge_node);
+                Node::add_out_edge(&edge_node, &vertex_node);
+            } else {
+                Node::add_in_edge(&edge_node, &vertex_node);
             }
-            Node::add_out_edge(&vertex_node, &edge_node);
-            self.n_edges.update(|x| x + 1);
+
+            if Node::add_out_edge(&vertex_node, &edge_node) {
+                self.n_edges.update(|x| x + 1);
+            }
         } else {
             dbg!(vertex, edge, self.vertices.borrow().len());
             panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
@@ -242,10 +262,14 @@ impl<T> Graph<T> {
         directed: bool,
     ) {
         if !directed {
-            Node::add_in_edge(&vertex_node, &edge_node);
+            Node::add_out_edge(&edge_node, &vertex_node);
+        } else {
+            Node::add_in_edge(&edge_node, &vertex_node);
         }
-        Node::add_out_edge(&vertex_node, &edge_node);
-        self.n_edges.update(|x| x + 1);
+
+        if Node::add_out_edge(&vertex_node, &edge_node) {
+            self.n_edges.update(|x| x + 1);
+        }
     }
 
     pub fn bfs(&self, start: usize, goal: Option<usize>) -> usize {

@@ -12,10 +12,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 const SYMMETRIZE: bool = false;
 const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
-const FILE_NAME: &'static str = ""; // "datasets/dolphins.out"
+const FILE_NAME: &'static str = "datasets/dolphins.out"; // "datasets/dolphins.out"
 const INVERT: bool = false;
 const SCALE: usize = 3;
-const DEGREE: usize = 5;
+const DEGREE: usize = 1;
 
 pub struct BuilderBase {
     symmetrize: bool,
@@ -81,6 +81,7 @@ impl BuilderBase {
 
         let graph;
         if self.symmetrize {
+            println!("Building directed");
             graph = G::build_directed(
                 self.num_nodes.expect("`num_nodes` is not specified"),
                 edge_list,
@@ -125,7 +126,9 @@ impl BuilderBase {
     fn squish_graph<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(&self, graph: &mut G) {
         Self::squish_csr(graph, false);
         if graph.directed() {
-            unimplemented!("Directed graphs are not supproted");
+            if INVERT {
+                Self::squish_csr(graph, true);
+            }
         }
     }
 

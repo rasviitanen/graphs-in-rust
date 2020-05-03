@@ -107,7 +107,6 @@ pub fn afforest<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     // FIXME: Make parallel
     let mut comp: Vec<NodeId> = (0..graph.num_nodes()).into_iter().collect();
 
-
     for r in 0..neighbor_rounds {
         for u in 0..graph.num_nodes() {
             for v in graph.out_neigh(u).skip(r) {
@@ -121,23 +120,38 @@ pub fn afforest<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     let c = sample_frequent_element(&comp, None);
 
     if !graph.directed() {
-        (0..graph.num_nodes()).into_iter().for_each(|u| {
+        for u in 0..graph.num_nodes() {
             // Skip processing nodes in the largest component
             if comp[u] == c {
-            } else {
-                // Skip oveer part of the neighborhood (determined by neighor_rounds)
-                for v in graph.out_neigh(u).skip(neighbor_rounds) {
-                    link(u, v.as_node(), &mut comp);
-                }
+                continue;
             }
-        });
+            // Skip oveer part of the neighborhood (determined by neighor_rounds)
+            for v in graph.out_neigh(u).skip(neighbor_rounds) {
+                link(u, v.as_node(), &mut comp);
+            }
+        };
     } else {
-        unimplemented!("Directed graphs are not supported yet");
+        for u in 0..graph.num_nodes() {
+            if comp[u] == c {
+                continue;
+            }
+
+            for v in graph.out_neigh(u).skip(neighbor_rounds) {
+                link(u, v.as_node(), &mut comp);
+            }
+
+            for v in graph.in_neigh(u).skip(neighbor_rounds) {
+                println!("Link({}, {})", u, v.as_node());
+                link(u, v.as_node(), &mut comp);
+            }
+        }
     }
 
     // Finally, `compress` for final convergence
     compress(graph, &mut comp);
-    // verifier(graph, &comp);
+    dbg!(verifier(graph, &comp));
+    dbg!(&comp);
+
     comp
 }
 
