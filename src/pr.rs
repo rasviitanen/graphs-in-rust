@@ -51,7 +51,6 @@ pub fn page_rank_pull<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     }
 
     assert!(verifier(graph, &scores, 0.0004));
-    dbg!(&scores);
     scores
 }
 

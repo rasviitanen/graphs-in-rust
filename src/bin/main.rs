@@ -17,6 +17,6 @@ fn main() {
     // );
     // source_picker.benchmark_kernel_tc();
     // source_picker.benchmark_kernel_cc();
-    source_picker.benchmark_kernel_pr();
+    source_picker.benchmark_kernel_tc();
 
 }

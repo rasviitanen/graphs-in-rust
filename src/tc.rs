@@ -26,8 +26,7 @@ use crate::types::*;
 /// Only works on undirected, with sorted nodes
 fn ordered_count<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usize {
     let mut total = 0;
-    for u in graph.vertices() {
-        let u = u.as_node();
+    for u in 0..graph.num_nodes() {
         for v in graph.out_neigh(u) {
             if v.as_node() > u {
                 break;
@@ -40,12 +39,8 @@ fn ordered_count<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usize {
                     break;
                 }
 
-                for e in &it {
-                    if e.as_node() < w.as_node() {
-                        idx += 1;
-                    } else {
-                        break;
-                    }
+                while it[idx].as_node() < w.as_node() {
+                    idx += 1;
                 }
 
                 if w.as_node() == it[idx].as_node() {
@@ -57,10 +52,12 @@ fn ordered_count<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usize {
         }
     }
 
+    dbg!(verifier(graph, total));
     total
 }
 
-fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, test_total: usize) {
+fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, test_total: usize
+) -> bool {
     let mut total = 0;
 
     for u in graph.vertices() {
@@ -80,6 +77,8 @@ fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, test_total: usiz
     if total != test_total {
         println!("Total: {} != Test Total: {}", total, test_total);
     }
+
+    total == test_total
 }
 
 fn worth_relabelling<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> bool {
