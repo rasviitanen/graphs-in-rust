@@ -38,14 +38,6 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
         }
     }
 
-    /// Executes BFS with a suitable start node
-    pub fn bfs_bound(&mut self) {
-        let next = self.pick_next();
-        self.graph.old_bfs(next);
-        println!("-.-.-.-.-.-.-.-.-.-");
-        crate::bfs::do_bfs(&self.graph, next);
-    }
-
     /// Picks a vertex from the graph using a uniform distribution
     ///
     /// Loops infinitely if the picked vertex does not exist, or if it
@@ -61,6 +53,14 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
                 return source;
             }
         }
+    }
+
+    /// Executes BFS with a suitable start node
+    pub fn bfs_bound(&mut self) {
+        let next = self.pick_next();
+        self.graph.old_bfs(next);
+        println!("-.-.-.-.-.-.-.-.-.-");
+        crate::bfs::do_bfs(&self.graph, next);
     }
 
     /// Benchmarks BFS (direction optimizing)
@@ -107,6 +107,14 @@ impl<V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<V, E, G> {
             Box::new(|| {}),
         );
     }
+
+    // pub fn benchmark_kernel_bc(&mut self) {
+    //     self.benchmark_kernel(
+    //         Box::new(|g: &G| { crate::bc::brandes(g, self, 5); }),
+    //         Box::new(|| {}),
+    //         Box::new(|| {}),
+    //     );
+    // }
 
     /// Benchmarks a given `kernel`
     pub fn benchmark_kernel(
