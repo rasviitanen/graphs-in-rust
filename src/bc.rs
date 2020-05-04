@@ -15,6 +15,14 @@
 //!     Chavarria-Miranda. "A faster parallel algorithm and efficient multithreaded
 //!     implementations for evaluating betweenness centrality on massive datasets."
 //!     International Symposium on Parallel & Distributed Processing (IPDPS), 2009.
+//!
+//! ## Warning
+//! This statement is false:
+//! As an optimization to save memory, this implementation uses a Bitmap to hold
+//! succ (list of successors).
+//!
+//! We use a hashset instead, as the pointer-magic in C++ is not easily
+//! ported to rust
 
 use crate::graph::CSRGraph;
 use crate::slidingqueue::SlidingQueue;
@@ -28,6 +36,7 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSlice;
+use std::collections::HashSet;
 
 type Score = f64;
 type Count = f64;
@@ -37,8 +46,8 @@ fn pbfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
     source: NodeId,
     path_counts: &mut Vec<Count>,
-    succ: &mut Bitmap,
-    depth_index: &mut Vec<std::boxed::Box<dyn std::iter::Iterator<Item = NodeId>>>,
+    succ: &mut HashSet<(usize, usize)>,
+    depth_index: &mut Vec<Vec<NodeId>>,
     queue: &mut SlidingQueue<NodeId>,
 ) {
     let mut depths: Vec<Option<NodeId>> = vec![None; graph.num_nodes()];
@@ -46,9 +55,8 @@ fn pbfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     path_counts[source] = 1.0;
     queue.push_back(source);
     let queue_clone: Vec<NodeId> = queue.into_iter().map(|x| *x).collect();
-    depth_index.push(Box::new(queue_clone.into_iter()));
+    depth_index.push(queue_clone);
     queue.slide_window();
-    let g_out_start = graph.out_neigh(0).next().expect("No first neighbor").as_node();
 
     {
         let mut depth = 0;
@@ -65,24 +73,25 @@ fn pbfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
                     }
 
                     if depths[v] == Some(depth) {
-                        succ[v - g_out_start] = true;
+                        succ.insert((*u, v));
                         path_counts[v] += path_counts[*u];
                     }
                 }
             }
-        }
-        lqueue.slide_window();
 
-        for e in lqueue {
-            queue.push_back(e);
-        }
+            lqueue.slide_window();
 
-        let queue_clone: Vec<NodeId> = queue.into_iter().map(|x| *x).collect();
-        depth_index.push(Box::new(queue_clone.into_iter()));
-        queue.slide_window();
+            for e in &lqueue {
+                queue.push_back(*e);
+            }
+    
+            let queue_clone: Vec<NodeId> = queue.into_iter().map(|x| *x).collect();
+            depth_index.push(queue_clone);
+            queue.slide_window();
+        }
     }
     let queue_clone: Vec<NodeId> = queue.into_iter().map(|x| *x).collect();
-    depth_index.push(Box::new(queue_clone.into_iter()))
+    depth_index.push(queue_clone)
 }
 
 pub fn brandes<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
@@ -92,11 +101,9 @@ pub fn brandes<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 ) -> Vec<Score> {
     let mut scores = vec![0.0; graph.num_nodes()];
     let mut path_counts = vec![0.0; graph.num_nodes()];
-    let mut succ = vec![false; graph.num_edges_directed()];
-    let mut depth_index: Vec<Box<dyn Iterator<Item = NodeId>>> = Vec::new();
+    let mut succ = HashSet::new();
+    let mut depth_index: Vec<Vec<NodeId>> = Vec::new();
     let mut queue = SlidingQueue::with_capacity(graph.num_nodes());
-
-    let g_out_start = graph.out_neigh(0).next().expect("No first neighbor").as_node();
 
     for n in 0..num_iters {
         let source = sp.pick_next();
@@ -105,30 +112,31 @@ pub fn brandes<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         }
         depth_index.clear();
         queue.reset();
-        succ = vec![false; graph.num_edges_directed()];
+        succ.clear();
 
         pbfs(graph, source, &mut path_counts, &mut succ, &mut depth_index, &mut queue);
 
         let mut deltas = vec![0.0; graph.num_nodes()];
 
-        for d in (0..depth_index.len()-2).rev() {
-            // FIXME: Wrong limit
-            let other_start = depth_index[d+1].next().unwrap();
-            while let Some(u) = depth_index[d].next() {
-                if u < other_start {
-                    continue;
-                }
-
-                let mut delta_u = 0.0;
-                for v in  graph.out_neigh(u) {
-                    let v = v.as_node();
-                    if succ[v - g_out_start] {
-                        delta_u += (path_counts[u] / path_counts[v]) * (1.0 + deltas[v]);
+        for d in (0..=depth_index.len()-2).rev() {
+            let end_check = depth_index[d+1].get(0);
+            for u in &depth_index[d] {
+                if let Some(other_start) = end_check {
+                    if u == other_start {
+                        break;
                     }
                 }
 
-                deltas[u] = delta_u;
-                scores[u] += delta_u;
+                let mut delta_u = 0.0;
+                for v in graph.out_neigh(*u) {
+                    let v = v.as_node();
+                    if succ.get(&(*u, v)).is_some() {
+                        delta_u += (path_counts[*u] / path_counts[v]) * (1.0 + deltas[v]);
+                    }
+                }
+
+                deltas[*u] = delta_u;
+                scores[*u] += delta_u;
             }
         }
     }

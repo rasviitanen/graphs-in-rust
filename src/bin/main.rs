@@ -1,15 +1,17 @@
-use gapbs::benchmark::SourcePicker;
+use gapbs::benchmark::{benchmark_kernel, benchmark_kernel_with_sp, SourcePicker};
 use gapbs::bfs;
 use gapbs::builder::BuilderBase;
 use gapbs::graphmodels;
 use gapbs::types::*;
 
+type Graph = graphmodels::rc::Graph<usize>;
+
 fn main() {
     let mut builder = BuilderBase::new();
 
-    // Choose graph model here
-    let graph: graphmodels::rc::Graph<usize> = builder.make_graph();
-    let mut source_picker = SourcePicker::new(graph);
+    let graph: Graph = builder.make_graph();
+    let mut source_picker = SourcePicker::new(&graph);
+
 
     // source_picker.benchmark_kernel_bfs(
     //     Box::new(|| {}),
@@ -17,6 +19,16 @@ fn main() {
     // );
     // source_picker.benchmark_kernel_tc();
     // source_picker.benchmark_kernel_cc();
-    source_picker.benchmark_kernel_tc();
+    // source_picker.benchmark_kernel_tc();
+
+    benchmark_kernel_with_sp(
+        &graph,
+        &mut source_picker,
+        Box::new(|g: &Graph, mut sp| {
+            gapbs::bc::brandes(g, &mut sp, 1);
+        }),
+        Box::new(|| {}),
+        Box::new(|| {}),
+    );
 
 }

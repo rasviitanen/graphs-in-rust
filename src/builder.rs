@@ -9,7 +9,7 @@ use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-const SYMMETRIZE: bool = false;
+const SYMMETRIZE: bool = true;
 const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
 const FILE_NAME: &'static str = "datasets/dolphins.out"; // "datasets/dolphins.out"
