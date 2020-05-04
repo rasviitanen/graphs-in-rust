@@ -24,9 +24,9 @@
 //! We use a hashset instead, as the pointer-magic in C++ is not easily
 //! ported to rust
 
+use crate::benchmark::SourcePicker;
 use crate::graph::CSRGraph;
 use crate::slidingqueue::SlidingQueue;
-use crate::benchmark::SourcePicker;
 use crate::types::*;
 use bit_vec::BitVec;
 use rayon::iter::IndexedParallelIterator;
@@ -84,7 +84,7 @@ fn pbfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
             for e in &lqueue {
                 queue.push_back(*e);
             }
-    
+
             let queue_clone: Vec<NodeId> = queue.into_iter().map(|x| *x).collect();
             depth_index.push(queue_clone);
             queue.slide_window();
@@ -114,12 +114,19 @@ pub fn brandes<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         queue.reset();
         succ.clear();
 
-        pbfs(graph, source, &mut path_counts, &mut succ, &mut depth_index, &mut queue);
+        pbfs(
+            graph,
+            source,
+            &mut path_counts,
+            &mut succ,
+            &mut depth_index,
+            &mut queue,
+        );
 
         let mut deltas = vec![0.0; graph.num_nodes()];
 
-        for d in (0..=depth_index.len()-2).rev() {
-            let end_check = depth_index[d+1].get(0);
+        for d in (0..=depth_index.len() - 2).rev() {
+            let end_check = depth_index[d + 1].get(0);
             for u in &depth_index[d] {
                 if let Some(other_start) = end_check {
                     if u == other_start {

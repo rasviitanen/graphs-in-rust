@@ -12,6 +12,7 @@
 use crate::graph::CSRGraph;
 use crate::types::*;
 use bit_vec::BitVec;
+use rand::prelude::*;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
@@ -20,7 +21,6 @@ use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSlice;
 use std::collections::HashMap;
-use rand::prelude::*;
 use std::collections::VecDeque;
 
 fn link(u: NodeId, v: NodeId, comp: &mut Vec<NodeId>) {
@@ -28,11 +28,7 @@ fn link(u: NodeId, v: NodeId, comp: &mut Vec<NodeId>) {
     let mut p2 = comp[v];
 
     while p1 != p2 {
-        let (high, low) = if p1 > p2 {
-            (p1, p2)
-        } else {
-            (p2, p1)
-        };
+        let (high, low) = if p1 > p2 { (p1, p2) } else { (p2, p1) };
 
         let p_high = comp[high];
 
@@ -53,10 +49,7 @@ fn link(u: NodeId, v: NodeId, comp: &mut Vec<NodeId>) {
 }
 
 // FIXME: Make parallel
-fn compress<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
-    graph: &G,
-    comp: &mut Vec<NodeId>,
-) {
+fn compress<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, comp: &mut Vec<NodeId>) {
     (0..graph.num_nodes()).into_iter().for_each(|n| {
         while comp[n] != comp[comp[n]] {
             comp[n] = comp[comp[n]];
@@ -64,10 +57,7 @@ fn compress<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     });
 }
 
-fn sample_frequent_element(
-    comp: &Vec<NodeId>,
-    num_samples: Option<usize>,
-) -> NodeId {
+fn sample_frequent_element(comp: &Vec<NodeId>, num_samples: Option<usize>) -> NodeId {
     // Sample elements from `comp`
     let num_samples = num_samples.unwrap_or(1024);
     let mut sample_counts = HashMap::with_capacity(32);
@@ -86,14 +76,13 @@ fn sample_frequent_element(
         .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
         .expect("Failed to calculate most frequent");
 
-
     let frac_of_graph: f64 = *most_frequent.1 as f64 / num_samples as f64;
 
     println!(
         "Skipping largest intermediate component
         (ID: {}, approx. {}% of the graph.)",
         most_frequent.0,
-        frac_of_graph*100.0,
+        frac_of_graph * 100.0,
     );
 
     *most_frequent.0
@@ -129,7 +118,7 @@ pub fn afforest<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
             for v in graph.out_neigh(u).skip(neighbor_rounds) {
                 link(u, v.as_node(), &mut comp);
             }
-        };
+        }
     } else {
         for u in 0..graph.num_nodes() {
             if comp[u] == c {
@@ -153,10 +142,7 @@ pub fn afforest<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     comp
 }
 
-fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
-    graph: &G,
-    comp: &Vec<NodeId>,
-) -> bool {
+fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, comp: &Vec<NodeId>) -> bool {
     let mut label_to_source = HashMap::new();
 
     for n in graph.vertices() {

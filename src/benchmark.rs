@@ -106,7 +106,9 @@ impl<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<'a, V, E, G> {
     pub fn benchmark_kernel_cc(&self) {
         benchmark_kernel(
             self.graph,
-            Box::new(|g: &G| { crate::cc::afforest(g, None); }),
+            Box::new(|g: &G| {
+                crate::cc::afforest(g, None);
+            }),
             Box::new(|| {}),
             Box::new(|| {}),
         );
@@ -138,7 +140,7 @@ pub fn benchmark_kernel<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 pub fn benchmark_kernel_with_sp<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &'a G,
     source_picker: &'a mut SourcePicker<'a, V, E, G>,
-    mut kernel: GraphFuncTwo<G, SourcePicker<'a, V,E,G>>,
+    mut kernel: GraphFuncTwo<G, SourcePicker<'a, V, E, G>>,
     stats: AnalysisFunc,
     verify: VerifyFunc,
 ) {

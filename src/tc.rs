@@ -56,8 +56,7 @@ fn ordered_count<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usize {
     total
 }
 
-fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, test_total: usize
-) -> bool {
+fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, test_total: usize) -> bool {
     let mut total = 0;
 
     for u in graph.vertices() {

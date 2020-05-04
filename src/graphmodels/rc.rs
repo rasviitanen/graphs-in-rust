@@ -48,7 +48,7 @@ impl<T> Node<T> {
         Rc::new(RefCell::new(node))
     }
 
-    fn add_in_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>)  -> bool {
+    fn add_in_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>) -> bool {
         let node_id = edge.borrow().node_id;
 
         // Disable self-edges
@@ -58,7 +58,8 @@ impl<T> Node<T> {
 
         this.borrow_mut()
             .in_edges
-            .insert(node_id, WrappedNode::from_node(Rc::clone(edge))).is_none()
+            .insert(node_id, WrappedNode::from_node(Rc::clone(edge)))
+            .is_none()
     }
 
     fn add_out_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>) -> bool {
@@ -71,7 +72,8 @@ impl<T> Node<T> {
 
         this.borrow_mut()
             .out_edges
-            .insert(node_id, WrappedNode::from_node(Rc::clone(edge))).is_none()
+            .insert(node_id, WrappedNode::from_node(Rc::clone(edge)))
+            .is_none()
     }
 }
 

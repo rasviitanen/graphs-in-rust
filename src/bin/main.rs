@@ -12,7 +12,6 @@ fn main() {
     let graph: Graph = builder.make_graph();
     let mut source_picker = SourcePicker::new(&graph);
 
-
     // source_picker.benchmark_kernel_bfs(
     //     Box::new(|| {}),
     //     Box::new(|| {}),
@@ -30,5 +29,4 @@ fn main() {
         Box::new(|| {}),
         Box::new(|| {}),
     );
-
 }
