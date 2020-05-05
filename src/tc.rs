@@ -52,7 +52,6 @@ fn ordered_count<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usize {
         }
     }
 
-    dbg!(verifier(graph, total));
     total
 }
 
@@ -73,9 +72,6 @@ fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, test_total: usiz
     }
 
     total = total / 6; // Each triangle was counted 6 times
-    if total != test_total {
-        println!("Total: {} != Test Total: {}", total, test_total);
-    }
 
     total == test_total
 }

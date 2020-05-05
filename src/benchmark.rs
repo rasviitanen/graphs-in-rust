@@ -3,8 +3,6 @@ use crate::types::*;
 use rand::prelude::*;
 use std::marker::PhantomData;
 
-const NUM_TRIALS: usize = 1;
-
 type GraphFunc<T> = Box<dyn FnMut(&T) -> ()>;
 type GraphFuncTwo<T, E> = Box<dyn FnMut(&T, &mut E) -> ()>;
 type AnalysisFunc = Box<dyn Fn() -> ()>;
@@ -56,30 +54,6 @@ impl<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<'a, V, E, G> {
         }
     }
 
-    /// Executes BFS with a suitable start node
-    pub fn bfs_bound(&mut self) {
-        let next = self.pick_next();
-        self.graph.old_bfs(next);
-        println!("-.-.-.-.-.-.-.-.-.-");
-        crate::bfs::do_bfs(self.graph, next);
-    }
-
-    /// Benchmarks BFS (direction optimizing)
-    pub fn benchmark_kernel_bfs(&mut self, stats: AnalysisFunc, verify: VerifyFunc) {
-        self.graph.print_stats();
-        let mut total_time = 0;
-
-        for iter in 0..NUM_TRIALS {
-            let t_start = time::now_utc();
-            let result = self.bfs_bound();
-            let t_finish = time::now_utc();
-            total_time = (t_finish - t_start).num_milliseconds();
-            println!("\tTrial time {} msec", total_time);
-        }
-
-        println!("\tBenchmark took {} msec", total_time);
-    }
-
     /// Benchmarks PageRank with `max_iters = 20` and `epsilon = 0.0004`
     pub fn benchmark_kernel_pr(&self) {
         benchmark_kernel(
@@ -122,18 +96,14 @@ pub fn benchmark_kernel<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     stats: AnalysisFunc,
     verify: VerifyFunc,
 ) {
-    graph.print_stats();
-    let mut total_time = 0;
+    // graph.print_stats();
+    let mut timer = crate::timer::ScopedTimer::new("BENCHMARK");
 
-    for iter in 0..NUM_TRIALS {
-        let t_start = time::now_utc();
+    for i in 1..=NUM_TRIALS {
+        timer.checkpoint(&format!("Trial {}", i));
         let result = kernel(&graph);
-        let t_finish = time::now_utc();
-        total_time += (t_finish - t_start).num_milliseconds();
-        println!("\tTrial time {} msec", total_time);
+        timer.elapsed_since_checkpoint();
     }
-
-    println!("\tBenchmark took {} msec", total_time);
 }
 
 /// Benchmarks a given `kernel`
@@ -144,16 +114,12 @@ pub fn benchmark_kernel_with_sp<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     stats: AnalysisFunc,
     verify: VerifyFunc,
 ) {
-    graph.print_stats();
-    let mut total_time = 0;
+    // graph.print_stats();
+    let mut timer = crate::timer::ScopedTimer::new("BENCHMARK");
 
-    for iter in 0..NUM_TRIALS {
-        let t_start = time::now_utc();
+    for i in 1..=NUM_TRIALS {
+        timer.checkpoint(&format!("Trial {}", i));
         let result = kernel(&graph, source_picker);
-        let t_finish = time::now_utc();
-        total_time += (t_finish - t_start).num_milliseconds();
-        println!("\tTrial time {} msec", total_time);
+        timer.elapsed_since_checkpoint();
     }
-
-    println!("\tBenchmark took {} msec", total_time);
 }

@@ -21,9 +21,6 @@ impl Generator {
     pub fn new(scale: usize, degree: usize) -> Self {
         let num_nodes = 1 << scale;
         let num_edges = num_nodes * degree;
-        dbg!(num_nodes);
-        dbg!(num_edges);
-        dbg!(degree);
 
         Self {
             scale,
@@ -82,19 +79,12 @@ impl Generator {
     }
 
     pub fn generate_edge_list(&self, uniform: bool) -> EdgeList {
-        let t_start = time::now_utc();
-
+        let timer = crate::timer::ScopedTimer::new("Generate");
         let edge_list = if uniform {
             self.make_uniform_edge_list()
         } else {
             self.make_rmat_edge_list()
         };
-
-        let t_finish = time::now_utc();
-        println!(
-            "\tGenerate took {} msec",
-            (t_finish - t_start).num_milliseconds()
-        );
 
         edge_list
     }

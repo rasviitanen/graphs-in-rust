@@ -56,53 +56,53 @@ pub fn delta_step<V: AsNode, E: AsNode + WeightedEdge, G: CSRGraph<V, E>>(
     let mut local_bins: Vec<Vec<NodeId>> = Vec::new();
     let mut iter = 0;
 
-    while shared_indices[iter&1] != K_MAX_BIN {
-        let curr_bin_index = unsafe { &mut shared_indices[iter&1] as *mut _};
-        let next_bin_index = unsafe { &mut shared_indices[(iter+1)&1] as *mut _};
-        let curr_frontier_tail = unsafe { &mut frontier_tails[iter&1] as *mut _};
-        let next_frontier_tail = unsafe { &mut frontier_tails[(iter+1)&1] as *mut _};
+    while shared_indices[iter & 1] != K_MAX_BIN {
+        let curr_bin_index = unsafe { &mut shared_indices[iter & 1] as *mut _ };
+        let next_bin_index = unsafe { &mut shared_indices[(iter + 1) & 1] as *mut _ };
+        let curr_frontier_tail = unsafe { &mut frontier_tails[iter & 1] as *mut _ };
+        let next_frontier_tail = unsafe { &mut frontier_tails[(iter + 1) & 1] as *mut _ };
 
-        dbg!(iter, unsafe{*curr_frontier_tail});
-        (0..unsafe{*curr_frontier_tail}).into_iter().for_each(|i| {
-            let u = frontier[i];
-            if dist[u] >= delta * (unsafe{*curr_bin_index}) {
-                for wn in graph.out_neigh(u) {
-                    let mut old_dist = dist[wn.as_node()];
-                    let mut new_dist = dist[u] + wn.get_weight();
+        (0..unsafe { *curr_frontier_tail })
+            .into_iter()
+            .for_each(|i| {
+                let u = frontier[i];
+                if dist[u] >= delta * (unsafe { *curr_bin_index }) {
+                    for wn in graph.out_neigh(u) {
+                        let mut old_dist = dist[wn.as_node()];
+                        let mut new_dist = dist[u] + wn.get_weight();
 
-                    if new_dist < old_dist {
-                        let mut changed_dist = true;
+                        if new_dist < old_dist {
+                            let mut changed_dist = true;
 
-                        while {
-                            //FIXME: replace with CAS
-                            let mut cas_status = false;
-                            if dist[wn.as_node()] == old_dist {
-                                dist[wn.as_node()] = new_dist;
-                                cas_status = true;
+                            while {
+                                //FIXME: replace with CAS
+                                let mut cas_status = false;
+                                if dist[wn.as_node()] == old_dist {
+                                    dist[wn.as_node()] = new_dist;
+                                    cas_status = true;
+                                }
+                                !cas_status
+                            } {
+                                old_dist = dist[wn.as_node()];
+                                if old_dist <= new_dist {
+                                    changed_dist = false;
+                                    break;
+                                }
                             }
-                            !cas_status
-                        } {
-                            old_dist = dist[wn.as_node()];
-                            if old_dist <= new_dist {
-                                changed_dist = false;
-                                break;
+
+                            if changed_dist {
+                                let dest_bin = new_dist / delta;
+                                if dest_bin >= local_bins.len() {
+                                    local_bins.resize(dest_bin + 1, Vec::new());
+                                }
+                                local_bins[dest_bin].push(wn.as_node());
                             }
                         }
-
-                        if changed_dist {
-                            let dest_bin = new_dist/delta;
-                            if dest_bin >= local_bins.len() {
-                                local_bins.resize(dest_bin+1, Vec::new());
-                            }
-                            local_bins[dest_bin].push(wn.as_node());
-                        }
-
                     }
                 }
-            }
-        });
+            });
 
-        for i in (unsafe{*curr_bin_index})..local_bins.len() {
+        for i in (unsafe { *curr_bin_index })..local_bins.len() {
             if !local_bins[i].is_empty() {
                 unsafe {
                     *next_bin_index = usize::min(*next_bin_index, i);
@@ -111,29 +111,30 @@ pub fn delta_step<V: AsNode, E: AsNode + WeightedEdge, G: CSRGraph<V, E>>(
             }
         }
 
-        unsafe{
+        unsafe {
             *curr_bin_index = K_MAX_BIN;
             *curr_frontier_tail = 0;
         }
 
-        if unsafe{*next_bin_index} < local_bins.len() {
-            let copy_start = unsafe{*next_frontier_tail};
-            unsafe{
-                *next_frontier_tail += local_bins[unsafe{*next_bin_index}].len();
-             } // FIXME: fetch-and-add
+        if unsafe { *next_bin_index } < local_bins.len() {
+            let copy_start = unsafe { *next_frontier_tail };
+            unsafe {
+                *next_frontier_tail += local_bins[unsafe { *next_bin_index }].len();
+            } // FIXME: fetch-and-add
 
-            for e in frontier.iter_mut().skip(copy_start).zip(local_bins[unsafe{*next_bin_index}].iter()) {
+            for e in frontier
+                .iter_mut()
+                .skip(copy_start)
+                .zip(local_bins[unsafe { *next_bin_index }].iter())
+            {
                 *e.0 = *e.1
             }
 
-            local_bins[unsafe{*next_bin_index}].resize(0, 0);
+            local_bins[unsafe { *next_bin_index }].resize(0, 0);
         }
 
         iter += 1;
     }
 
-    println!("Took {} iterations", iter);
-
-    dbg!(&dist);
     dist
 }

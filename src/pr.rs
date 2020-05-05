@@ -76,6 +76,5 @@ pub fn verifier<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         incoming_sums[n.as_node()] = 0.0;
     }
 
-    dbg!(error);
     error < target_error
 }

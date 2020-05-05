@@ -7,38 +7,66 @@ use gapbs::types::*;
 type Graph = graphmodels::rc::Graph<usize>;
 
 fn main() {
-    let mut builder = BuilderBase::new();
+    println!(
+        r#"
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+                            EXECUTING
+                    The GAP Benchmarking Suite
+                            (Rust port)
+--------------------------------------------------------------------
+--------------------------------------------------------------------
+        "#
+    );
 
+    let mut builder = BuilderBase::new();
     let graph: Graph = builder.make_graph();
     let mut source_picker = SourcePicker::new(&graph);
+    let mut source_picker1 = SourcePicker::new(&graph);
+    let mut source_picker2 = SourcePicker::new(&graph);
+    let mut source_picker3 = SourcePicker::new(&graph);
 
-    // source_picker.benchmark_kernel_bfs(
-    //     Box::new(|| {}),
-    //     Box::new(|| {}),
-    // );
-    // source_picker.benchmark_kernel_tc();
-    // source_picker.benchmark_kernel_cc();
-    // source_picker.benchmark_kernel_tc();
-
-    // BC
-    // benchmark_kernel_with_sp(
-    //     &graph,
-    //     &mut source_picker,
-    //     Box::new(|g: &Graph, mut sp| {
-    //         gapbs::bc::brandes(g, &mut sp, 1);
-    //     }),
-    //     Box::new(|| {}),
-    //     Box::new(|| {}),
-    // );
-
-    // SSSP
+    println!("Breadth-First Search (BFS) - direction optimizing");
     benchmark_kernel_with_sp(
         &graph,
-        &mut source_picker,
-        Box::new(|g: &Graph, mut sp| {
-            gapbs::sssp::delta_step(g, 5, 1);
+        &mut source_picker1,
+        Box::new(|g: &Graph, sp| {
+            gapbs::bfs::do_bfs(g, sp.pick_next());
         }),
         Box::new(|| {}),
         Box::new(|| {}),
     );
+
+    println!("Single-Source Shortest Paths (SSSP) - delta stepping");
+    benchmark_kernel_with_sp(
+        &graph,
+        &mut source_picker3,
+        Box::new(|g: &Graph, sp| {
+            gapbs::sssp::delta_step(g, sp.pick_next(), 1);
+        }),
+        Box::new(|| {}),
+        Box::new(|| {}),
+    );
+
+    println!("Triangle Counting (TC) - Order invariant with possible relabelling");
+    source_picker.benchmark_kernel_tc();
+
+    println!("Connected Components (CC) - Afforest & Shiloach-Vishkin");
+    source_picker.benchmark_kernel_cc();
+
+    println!("PageRank (PR) - iterative method in pull direction");
+    source_picker.benchmark_kernel_pr();
+
+    println!("Betweenness Centrality (BC) - Brandes");
+    benchmark_kernel_with_sp(
+        &graph,
+        &mut source_picker2,
+        Box::new(|g: &Graph, mut sp| {
+            gapbs::bc::brandes(g, &mut sp, 1);
+        }),
+        Box::new(|| {}),
+        Box::new(|| {}),
+    );
+
+
 }

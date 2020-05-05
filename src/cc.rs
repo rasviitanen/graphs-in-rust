@@ -78,13 +78,6 @@ fn sample_frequent_element(comp: &Vec<NodeId>, num_samples: Option<usize>) -> No
 
     let frac_of_graph: f64 = *most_frequent.1 as f64 / num_samples as f64;
 
-    println!(
-        "Skipping largest intermediate component
-        (ID: {}, approx. {}% of the graph.)",
-        most_frequent.0,
-        frac_of_graph * 100.0,
-    );
-
     *most_frequent.0
 }
 
@@ -130,7 +123,6 @@ pub fn afforest<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
             }
 
             for v in graph.in_neigh(u).skip(neighbor_rounds) {
-                println!("Link({}, {})", u, v.as_node());
                 link(u, v.as_node(), &mut comp);
             }
         }
@@ -138,7 +130,6 @@ pub fn afforest<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 
     // Finally, `compress` for final convergence
     compress(graph, &mut comp);
-    dbg!(verifier(graph, &comp));
     comp
 }
 

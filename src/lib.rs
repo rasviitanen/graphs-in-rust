@@ -28,3 +28,5 @@ pub mod pr;
 pub mod sssp;
 /// # Triangle Counting (TC) - Order invariant with possible relabelling
 pub mod tc;
+
+mod timer;

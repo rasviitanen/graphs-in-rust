@@ -9,14 +9,6 @@ use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-const SYMMETRIZE: bool = true;
-const UNIFORM: bool = true;
-const NEEDS_WEIGHTS: bool = false;
-const FILE_NAME: &'static str = "datasets/moreno_kangaroo.out"; // "datasets/dolphins.out"
-const INVERT: bool = false;
-const SCALE: usize = 3;
-const DEGREE: usize = 1;
-
 pub struct BuilderBase {
     symmetrize: bool,
     needs_weights: bool,
@@ -69,7 +61,7 @@ impl BuilderBase {
         &mut self,
         edge_list: &mut EdgeList,
     ) -> G {
-        let t_start = time::now_utc();
+        let timer = crate::timer::ScopedTimer::new("Make Graph");
 
         if self.num_nodes.is_none() {
             self.num_nodes = Some(Self::find_max_node_id(edge_list) + 1);
@@ -81,25 +73,16 @@ impl BuilderBase {
 
         let graph;
         if self.symmetrize {
-            println!("Building directed");
             graph = G::build_directed(
                 self.num_nodes.expect("`num_nodes` is not specified"),
                 edge_list,
             )
         } else {
-            println!("Building undirected");
             graph = G::build_undirected(
                 self.num_nodes.expect("`num_nodes` is not specified"),
                 edge_list,
             )
         }
-
-        println!("GRAPH BUILDING IS DONE");
-        let t_finish = time::now_utc();
-        println!(
-            "\tBuild Time: {} msec",
-            (t_finish - t_start).num_milliseconds()
-        );
 
         graph
     }
@@ -136,7 +119,6 @@ impl BuilderBase {
         let mut edge_list;
         let generator = Generator::new(SCALE, DEGREE);
         if FILE_NAME != "" {
-            dbg!("Generating edge list from file");
             edge_list = generator.generate_edge_list_from_file(FILE_NAME);
         } else {
             edge_list = generator.generate_edge_list(UNIFORM);

@@ -36,7 +36,10 @@ impl<T> std::ops::Deref for WrappedNode<T> {
 
 impl<T> WrappedNode<T> {
     pub fn from_node(node: Rc<RefCell<Node<T>>>, weight: &Option<usize>) -> Self {
-        Self { inner: node, weight: weight.as_ref().map(|x| *x) }
+        Self {
+            inner: node,
+            weight: weight.as_ref().map(|x| *x),
+        }
     }
 }
 
@@ -59,7 +62,11 @@ impl<T> Node<T> {
         Rc::new(RefCell::new(node))
     }
 
-    fn add_in_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>, weight: &Option<usize>) -> bool {
+    fn add_in_edge(
+        this: &Rc<RefCell<Node<T>>>,
+        edge: &Rc<RefCell<Node<T>>>,
+        weight: &Option<usize>,
+    ) -> bool {
         let node_id = edge.borrow().node_id;
 
         // Disable self-edges
@@ -73,7 +80,11 @@ impl<T> Node<T> {
             .is_none()
     }
 
-    fn add_out_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>, weight: &Option<usize>) -> bool {
+    fn add_out_edge(
+        this: &Rc<RefCell<Node<T>>>,
+        edge: &Rc<RefCell<Node<T>>>,
+        weight: &Option<usize>,
+    ) -> bool {
         let node_id = edge.borrow().node_id;
 
         // Disable self-edges
@@ -116,8 +127,6 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         for (v, e, w) in edge_list {
             graph.add_edge(*v, *e, w, false);
         }
-
-        dbg!(&graph.n_edges);
 
         graph
     }
@@ -263,7 +272,6 @@ impl<T> Graph<T> {
                 self.n_edges.update(|x| x + 1);
             }
         } else {
-            dbg!(vertex, edge, self.vertices.borrow().len());
             panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
         }
     }
@@ -296,7 +304,6 @@ impl<T> Graph<T> {
 
         while let Some(node) = queue.pop_front() {
             let locked_node = node.borrow();
-            println!("Processing: {}", node.borrow().node_id);
             for edge in locked_node.out_edges.values() {
                 let edge_node_id = edge.borrow().node_id;
 

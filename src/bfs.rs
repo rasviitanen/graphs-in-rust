@@ -138,14 +138,9 @@ pub fn do_bfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, source: NodeId
     const ALPHA: usize = 15;
     const BETA: usize = 18;
 
-    let t_start = time::now_utc();
-
+    // let timer = crate::timer::ScopedTimer::new("Init Parent");
     let mut parent = init_parent(graph);
-    let t_finish = time::now_utc();
-    println!(
-        "\tInit Parent: {} msec",
-        (t_finish - t_start).num_milliseconds()
-    );
+    // drop(timer);
 
     parent[source] = VisitStatus::Positive(source);
     let mut queue: SlidingQueue<NodeId> = SlidingQueue::with_capacity(graph.num_nodes());
