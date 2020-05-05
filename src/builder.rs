@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 const SYMMETRIZE: bool = true;
 const UNIFORM: bool = true;
 const NEEDS_WEIGHTS: bool = false;
-const FILE_NAME: &'static str = "datasets/dolphins.out"; // "datasets/dolphins.out"
+const FILE_NAME: &'static str = "datasets/moreno_kangaroo.out"; // "datasets/dolphins.out"
 const INVERT: bool = false;
 const SCALE: usize = 3;
 const DEGREE: usize = 1;
@@ -67,7 +67,7 @@ impl BuilderBase {
 
     pub fn make_graph_from_edge_list<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         &mut self,
-        edge_list: &EdgeList,
+        edge_list: &mut EdgeList,
     ) -> G {
         let t_start = time::now_utc();
 
@@ -76,7 +76,7 @@ impl BuilderBase {
         }
 
         if self.needs_weights {
-            unimplemented!("Weights are not yet supported");
+            Generator::insert_weights(edge_list)
         }
 
         let graph;
@@ -133,7 +133,7 @@ impl BuilderBase {
     }
 
     pub fn make_graph<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(&mut self) -> G {
-        let edge_list;
+        let mut edge_list;
         let generator = Generator::new(SCALE, DEGREE);
         if FILE_NAME != "" {
             dbg!("Generating edge list from file");
@@ -142,7 +142,7 @@ impl BuilderBase {
             edge_list = generator.generate_edge_list(UNIFORM);
         }
 
-        let mut graph = self.make_graph_from_edge_list(&edge_list);
+        let mut graph = self.make_graph_from_edge_list(&mut edge_list);
         self.squish_graph(&mut graph);
         graph
     }

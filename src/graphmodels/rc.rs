@@ -7,6 +7,17 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub struct WrappedNode<T> {
     inner: Rc<RefCell<Node<T>>>,
+    weight: Option<usize>,
+}
+
+impl<T> WeightedEdge for WrappedNode<T> {
+    fn get_weight(&self) -> usize {
+        self.weight.expect("Weights must be assigned before used")
+    }
+
+    fn set_weight(&mut self, weight: usize) {
+        self.weight.replace(weight);
+    }
 }
 
 impl<T> AsNode for WrappedNode<T> {
@@ -24,8 +35,8 @@ impl<T> std::ops::Deref for WrappedNode<T> {
 }
 
 impl<T> WrappedNode<T> {
-    pub fn from_node(node: Rc<RefCell<Node<T>>>) -> Self {
-        Self { inner: node }
+    pub fn from_node(node: Rc<RefCell<Node<T>>>, weight: &Option<usize>) -> Self {
+        Self { inner: node, weight: weight.as_ref().map(|x| *x) }
     }
 }
 
@@ -48,7 +59,7 @@ impl<T> Node<T> {
         Rc::new(RefCell::new(node))
     }
 
-    fn add_in_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>) -> bool {
+    fn add_in_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>, weight: &Option<usize>) -> bool {
         let node_id = edge.borrow().node_id;
 
         // Disable self-edges
@@ -58,11 +69,11 @@ impl<T> Node<T> {
 
         this.borrow_mut()
             .in_edges
-            .insert(node_id, WrappedNode::from_node(Rc::clone(edge)))
+            .insert(node_id, WrappedNode::from_node(Rc::clone(edge), weight))
             .is_none()
     }
 
-    fn add_out_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>) -> bool {
+    fn add_out_edge(this: &Rc<RefCell<Node<T>>>, edge: &Rc<RefCell<Node<T>>>, weight: &Option<usize>) -> bool {
         let node_id = edge.borrow().node_id;
 
         // Disable self-edges
@@ -72,7 +83,7 @@ impl<T> Node<T> {
 
         this.borrow_mut()
             .out_edges
-            .insert(node_id, WrappedNode::from_node(Rc::clone(edge)))
+            .insert(node_id, WrappedNode::from_node(Rc::clone(edge), weight))
             .is_none()
     }
 }
@@ -90,8 +101,8 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             graph.add_vertex(v, None);
         }
 
-        for (v, e) in edge_list {
-            graph.add_edge(*v, *e, true)
+        for (v, e, w) in edge_list {
+            graph.add_edge(*v, *e, w, true)
         }
         graph
     }
@@ -102,8 +113,8 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         for v in 0..num_nodes {
             graph.add_vertex(v, None);
         }
-        for (v, e) in edge_list {
-            graph.add_edge(*v, *e, false);
+        for (v, e, w) in edge_list {
+            graph.add_edge(*v, *e, w, false);
         }
 
         dbg!(&graph.n_edges);
@@ -152,7 +163,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         if let Some(vertex) = self.vertices.borrow().get(&v) {
             let mut edges = Vec::new();
             for edge in vertex.borrow().out_edges.values() {
-                edges.push(WrappedNode::from_node(Rc::clone(edge)));
+                edges.push(WrappedNode::clone(&edge));
             }
             edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
             Box::new(edges.into_iter())
@@ -165,7 +176,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         if let Some(vertex) = self.vertices.borrow().get(&v) {
             let mut edges = Vec::new();
             for edge in vertex.borrow().in_edges.values() {
-                edges.push(WrappedNode::from_node(Rc::clone(edge)));
+                edges.push(WrappedNode::clone(&edge));
             }
             edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
             Box::new(edges.into_iter())
@@ -184,7 +195,7 @@ impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     fn vertices(&self) -> Range<WrappedNode<T>> {
         let mut edges = Vec::new();
         for edge in self.vertices.borrow().values() {
-            edges.push(WrappedNode::from_node(Rc::clone(edge)));
+            edges.push(WrappedNode::clone(&edge));
         }
         edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
         Box::new(edges.into_iter())
@@ -233,22 +244,22 @@ impl<T> Graph<T> {
         self.vertices
             .borrow_mut()
             .entry(node_id)
-            .or_insert(WrappedNode::from_node(new_node.clone()));
+            .or_insert(WrappedNode::from_node(new_node.clone(), &None));
         new_node
     }
 
-    pub fn add_edge(&self, vertex: usize, edge: usize, directed: bool) {
+    pub fn add_edge(&self, vertex: usize, edge: usize, weight: &Option<usize>, directed: bool) {
         if let (Some(vertex_node), Some(edge_node)) = (
             self.vertices.borrow().get(&vertex),
             self.vertices.borrow().get(&edge),
         ) {
             if !directed {
-                Node::add_out_edge(&edge_node, &vertex_node);
+                Node::add_out_edge(&edge_node, &vertex_node, weight);
             } else {
-                Node::add_in_edge(&edge_node, &vertex_node);
+                Node::add_in_edge(&edge_node, &vertex_node, weight);
             }
 
-            if Node::add_out_edge(&vertex_node, &edge_node) {
+            if Node::add_out_edge(&vertex_node, &edge_node, weight) {
                 self.n_edges.update(|x| x + 1);
             }
         } else {
@@ -261,15 +272,16 @@ impl<T> Graph<T> {
         &self,
         vertex_node: &Rc<RefCell<Node<T>>>,
         edge_node: &Rc<RefCell<Node<T>>>,
+        weight: &Option<usize>,
         directed: bool,
     ) {
         if !directed {
-            Node::add_out_edge(&edge_node, &vertex_node);
+            Node::add_out_edge(&edge_node, &vertex_node, weight);
         } else {
-            Node::add_in_edge(&edge_node, &vertex_node);
+            Node::add_in_edge(&edge_node, &vertex_node, weight);
         }
 
-        if Node::add_out_edge(&vertex_node, &edge_node) {
+        if Node::add_out_edge(&vertex_node, &edge_node, weight) {
             self.n_edges.update(|x| x + 1);
         }
     }

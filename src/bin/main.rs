@@ -20,11 +20,23 @@ fn main() {
     // source_picker.benchmark_kernel_cc();
     // source_picker.benchmark_kernel_tc();
 
+    // BC
+    // benchmark_kernel_with_sp(
+    //     &graph,
+    //     &mut source_picker,
+    //     Box::new(|g: &Graph, mut sp| {
+    //         gapbs::bc::brandes(g, &mut sp, 1);
+    //     }),
+    //     Box::new(|| {}),
+    //     Box::new(|| {}),
+    // );
+
+    // SSSP
     benchmark_kernel_with_sp(
         &graph,
         &mut source_picker,
         Box::new(|g: &Graph, mut sp| {
-            gapbs::bc::brandes(g, &mut sp, 1);
+            gapbs::sssp::delta_step(g, 5, 1);
         }),
         Box::new(|| {}),
         Box::new(|| {}),

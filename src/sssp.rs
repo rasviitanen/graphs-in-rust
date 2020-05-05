@@ -21,3 +21,119 @@
 //! ## Sources
 //! \[1\] Ulrich Meyer and Peter Sanders. "δ-stepping: a parallelizable shortest path
 //!     algorithm." Journal of Algorithms, 49(1):114–152, 2003.
+
+use crate::benchmark::SourcePicker;
+use crate::graph::CSRGraph;
+use crate::slidingqueue::SlidingQueue;
+use crate::types::*;
+use bit_vec::BitVec;
+use rayon::iter::IndexedParallelIterator;
+use rayon::iter::IntoParallelIterator;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::IntoParallelRefMutIterator;
+use rayon::iter::ParallelExtend;
+use rayon::iter::ParallelIterator;
+use rayon::slice::ParallelSlice;
+use std::collections::HashSet;
+
+const K_DIST_INF: Weight = std::usize::MAX / 2;
+const K_MAX_BIN: usize = std::usize::MAX / 2;
+
+pub fn delta_step<V: AsNode, E: AsNode + WeightedEdge, G: CSRGraph<V, E>>(
+    graph: &G,
+    source: NodeId,
+    delta: Weight,
+) -> Vec<Weight> {
+    let mut dist = vec![K_DIST_INF; graph.num_nodes()];
+    dist[source] = 0;
+    let mut frontier = vec![0; graph.num_edges_directed()];
+
+    let mut shared_indices: [usize; 2] = [0, K_MAX_BIN];
+    let mut frontier_tails: [usize; 2] = [1, 0];
+
+    frontier[0] = source;
+
+    let mut local_bins: Vec<Vec<NodeId>> = Vec::new();
+    let mut iter = 0;
+
+    while shared_indices[iter&1] != K_MAX_BIN {
+        let curr_bin_index = unsafe { &mut shared_indices[iter&1] as *mut _};
+        let next_bin_index = unsafe { &mut shared_indices[(iter+1)&1] as *mut _};
+        let curr_frontier_tail = unsafe { &mut frontier_tails[iter&1] as *mut _};
+        let next_frontier_tail = unsafe { &mut frontier_tails[(iter+1)&1] as *mut _};
+
+        dbg!(iter, unsafe{*curr_frontier_tail});
+        (0..unsafe{*curr_frontier_tail}).into_iter().for_each(|i| {
+            let u = frontier[i];
+            if dist[u] >= delta * (unsafe{*curr_bin_index}) {
+                for wn in graph.out_neigh(u) {
+                    let mut old_dist = dist[wn.as_node()];
+                    let mut new_dist = dist[u] + wn.get_weight();
+
+                    if new_dist < old_dist {
+                        let mut changed_dist = true;
+
+                        while {
+                            //FIXME: replace with CAS
+                            let mut cas_status = false;
+                            if dist[wn.as_node()] == old_dist {
+                                dist[wn.as_node()] = new_dist;
+                                cas_status = true;
+                            }
+                            !cas_status
+                        } {
+                            old_dist = dist[wn.as_node()];
+                            if old_dist <= new_dist {
+                                changed_dist = false;
+                                break;
+                            }
+                        }
+
+                        if changed_dist {
+                            let dest_bin = new_dist/delta;
+                            if dest_bin >= local_bins.len() {
+                                local_bins.resize(dest_bin+1, Vec::new());
+                            }
+                            local_bins[dest_bin].push(wn.as_node());
+                        }
+
+                    }
+                }
+            }
+        });
+
+        for i in (unsafe{*curr_bin_index})..local_bins.len() {
+            if !local_bins[i].is_empty() {
+                unsafe {
+                    *next_bin_index = usize::min(*next_bin_index, i);
+                }
+                break;
+            }
+        }
+
+        unsafe{
+            *curr_bin_index = K_MAX_BIN;
+            *curr_frontier_tail = 0;
+        }
+
+        if unsafe{*next_bin_index} < local_bins.len() {
+            let copy_start = unsafe{*next_frontier_tail};
+            unsafe{
+                *next_frontier_tail += local_bins[unsafe{*next_bin_index}].len();
+             } // FIXME: fetch-and-add
+
+            for e in frontier.iter_mut().skip(copy_start).zip(local_bins[unsafe{*next_bin_index}].iter()) {
+                *e.0 = *e.1
+            }
+
+            local_bins[unsafe{*next_bin_index}].resize(0, 0);
+        }
+
+        iter += 1;
+    }
+
+    println!("Took {} iterations", iter);
+
+    dbg!(&dist);
+    dist
+}

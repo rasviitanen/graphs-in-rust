@@ -44,7 +44,7 @@ impl Generator {
 
         edge_list.par_iter_mut().for_each(|e| {
             // FIXME: is 0 = u and 1 = v ?
-            *e = (permutation[e.0], permutation[e.1]);
+            *e = (permutation[e.0], permutation[e.1], None);
         });
     }
 
@@ -68,6 +68,7 @@ impl Generator {
                             (
                                 uniform_distribution.sample(&mut rng),
                                 uniform_distribution.sample(&mut rng),
+                                None,
                             )
                         })
                 }),
@@ -111,6 +112,7 @@ impl Generator {
             let connection = (
                 line_parts[0].parse::<usize>().unwrap(),
                 line_parts[1].parse::<usize>().unwrap(),
+                line_parts.get(2).map(|x| x.parse::<usize>().unwrap()),
             );
 
             edge_list.push(connection);
@@ -120,7 +122,14 @@ impl Generator {
     }
 
     pub fn insert_weights(edge_list: &mut EdgeList) {
-        unimplemented!("Weights are not supported yet");
+        let uniform_distribution = rand::distributions::Uniform::from(1..256);
+        let mut rng = rand::thread_rng();
+
+        let el_len = edge_list.len();
+
+        for e in edge_list.iter_mut() {
+            *e = (e.0, e.1, Some(uniform_distribution.sample(&mut rng)));
+        }
     }
 }
 
