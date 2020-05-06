@@ -16,11 +16,11 @@ pub type WEdge = (NodeId, DestId, Weight);
 pub type EdgeList = Vec<Edge>;
 pub type WEdgeList = Vec<WEdge>;
 
-pub const NUM_TRIALS: usize = 5;
+pub const NUM_TRIALS: usize = 1;
 pub const SYMMETRIZE: bool = true;
-pub const UNIFORM: bool = true;
+pub const UNIFORM: bool = false;
 pub const NEEDS_WEIGHTS: bool = true;
 pub const FILE_NAME: &'static str = ""; // "datasets/dolphins.out"
 pub const INVERT: bool = false;
-pub const SCALE: usize = 12;
-pub const DEGREE: usize = 16;
+pub const SCALE: usize = 6;
+pub const DEGREE: usize = 7;

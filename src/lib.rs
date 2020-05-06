@@ -1,6 +1,10 @@
 #![feature(cell_update)]
 pub const K_RAND_SEED: usize = 52;
 
+#[macro_use]
+extern crate gc_derive;
+extern crate gc;
+
 /// Performs the benchmarks
 pub mod benchmark;
 /// Builds and squishes a graph (removes self-references and parallel edges)
@@ -30,3 +34,4 @@ pub mod sssp;
 pub mod tc;
 
 mod timer;
+

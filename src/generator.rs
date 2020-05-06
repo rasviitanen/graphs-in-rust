@@ -9,6 +9,7 @@ use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
+use rand::distributions::Standard;
 
 pub struct Generator {
     scale: usize,
@@ -75,7 +76,50 @@ impl Generator {
     }
 
     fn make_rmat_edge_list(&self) -> EdgeList {
-        unimplemented!("RMAT edge generation is not implemented yet");
+        const A: f64 = 0.57;
+        const B: f64 = 0.19;
+        const C: f64 = 0.19;
+        let mut edge_list = Vec::with_capacity(self.num_edges);
+
+        edge_list.par_extend(
+            (0..self.num_edges)
+                .into_par_iter()
+                .step_by(self.block_size)
+                .flat_map(|block| {
+                    (block..std::cmp::min(block + self.block_size, self.num_edges))
+                        .into_par_iter()
+                        .map(move |_| {
+                            let mut src = 0;
+                            let mut dst = 0;
+
+                            for depth in 0..self.scale {
+                                let rand_point: f64 = StdRng::from_entropy().sample(Standard);
+                                src = src << 1;
+                                dst = dst << 1;
+
+                                if rand_point < A+B {
+                                    if rand_point > A {
+                                        dst += 1;
+                                    }
+                                } else {
+                                    src += 1;
+                                    if rand_point > A+B+C {
+                                        dst += 1;
+                                    }
+                                }
+                            }
+
+                            (
+                                src,
+                                dst,
+                                None,
+                            )
+                        })
+                }),
+        );
+
+        self.permutate_ids(&mut edge_list);
+        edge_list
     }
 
     pub fn generate_edge_list(&self, uniform: bool) -> EdgeList {
