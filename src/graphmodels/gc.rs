@@ -13,22 +13,6 @@ pub struct Node<T: 'static + Trace> {
     out_edges: HashMap<usize, Gc<GcCell<Self>>>,
 }
 
-impl<T: Trace> WeightedEdge for Node<T> {
-    fn get_weight(&self) -> usize {
-        self.weight.expect("Weights must be assigned before used")
-    }
-
-    fn set_weight(&mut self, weight: usize) {
-        self.weight.replace(weight);
-    }
-}
-
-impl<T: Trace> AsNode for Node<T> {
-    fn as_node(&self) -> NodeId {
-        self.node_id
-    }
-}
-
 impl<T: Trace> AsNode for Gc<GcCell<Node<T>>> {
     fn as_node(&self) -> NodeId {
         self.borrow().node_id
@@ -73,9 +57,9 @@ impl<T: Trace> Node<T> {
         this.borrow_mut()
             .in_edges
             .insert(node_id, {
-                let edge = Gc::clone(edge);
+                let mut edge = Gc::clone(edge);
                 if let Some(w) = weight {
-                    edge.borrow_mut().set_weight(*w);
+                    edge.set_weight(*w);
                 }
                 edge
             }).is_none()
@@ -96,9 +80,9 @@ impl<T: Trace> Node<T> {
         this.borrow_mut()
             .out_edges
             .insert(node_id, {
-                let edge = Gc::clone(edge);
+                let mut edge = Gc::clone(edge);
                 if let Some(w) = weight {
-                    edge.borrow_mut().set_weight(*w);
+                    edge.set_weight(*w);
                 }
                 edge
             })
@@ -181,7 +165,7 @@ impl<T: Clone + Trace> CSRGraph<Gc<GcCell<Node<T>>>, Gc<GcCell<Node<T>>>> for Gr
             for edge in vertex.borrow().out_edges.values() {
                 edges.push(Gc::clone(&edge));
             }
-            edges.sort_by(|a, b| a.borrow().as_node().cmp(&b.borrow().as_node()));
+            edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -194,7 +178,7 @@ impl<T: Clone + Trace> CSRGraph<Gc<GcCell<Node<T>>>, Gc<GcCell<Node<T>>>> for Gr
             for edge in vertex.borrow().in_edges.values() {
                 edges.push(Gc::clone(&edge));
             }
-            edges.sort_by(|a, b| a.borrow().as_node().cmp(&b.borrow().as_node()));
+            edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -213,7 +197,7 @@ impl<T: Clone + Trace> CSRGraph<Gc<GcCell<Node<T>>>, Gc<GcCell<Node<T>>>> for Gr
         for edge in self.vertices.borrow().values() {
             edges.push(Gc::clone(&edge));
         }
-        edges.sort_by(|a, b| a.borrow().as_node().cmp(&b.borrow().as_node()));
+        edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
         Box::new(edges.into_iter())
     }
 
@@ -221,7 +205,7 @@ impl<T: Clone + Trace> CSRGraph<Gc<GcCell<Node<T>>>, Gc<GcCell<Node<T>>>> for Gr
         if let Some(vertex) = self.vertices.borrow().get(&v) {
             let mut new_edges = HashMap::new();
             for e in edges {
-                new_edges.insert(e.borrow().as_node(), Gc::clone(&e));
+                new_edges.insert(e.as_node(), e);
             }
             vertex.borrow_mut().out_edges = new_edges;
         }
@@ -231,7 +215,7 @@ impl<T: Clone + Trace> CSRGraph<Gc<GcCell<Node<T>>>, Gc<GcCell<Node<T>>>> for Gr
         if let Some(vertex) = self.vertices.borrow().get(&v) {
             let mut new_edges = HashMap::new();
             for e in edges {
-                new_edges.insert(e.borrow().as_node(), Gc::clone(&e));
+                new_edges.insert(e.as_node(), e);
             }
             vertex.borrow_mut().in_edges = new_edges;
         }

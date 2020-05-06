@@ -1,4 +1,11 @@
 #![feature(cell_update)]
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_macros)]
+#![allow(unused_variables)]
+#![allow(unused_unsafe)]
+
+
 pub const K_RAND_SEED: usize = 52;
 
 #[macro_use]
