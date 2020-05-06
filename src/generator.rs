@@ -1,5 +1,6 @@
 use crate::types::*;
 
+use rand::distributions::Standard;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 use rayon::iter::IndexedParallelIterator;
@@ -9,7 +10,6 @@ use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
-use rand::distributions::Standard;
 
 pub struct Generator {
     scale: usize,
@@ -97,23 +97,19 @@ impl Generator {
                                 src = src << 1;
                                 dst = dst << 1;
 
-                                if rand_point < A+B {
+                                if rand_point < A + B {
                                     if rand_point > A {
                                         dst += 1;
                                     }
                                 } else {
                                     src += 1;
-                                    if rand_point > A+B+C {
+                                    if rand_point > A + B + C {
                                         dst += 1;
                                     }
                                 }
                             }
 
-                            (
-                                src,
-                                dst,
-                                None,
-                            )
+                            (src, dst, None)
                         })
                 }),
         );

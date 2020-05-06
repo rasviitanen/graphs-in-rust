@@ -1,16 +1,19 @@
 #![feature(cell_update)]
+#![feature(dropck_eyepatch)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 #![allow(unused_macros)]
 #![allow(unused_variables)]
 #![allow(unused_unsafe)]
 
-
 pub const K_RAND_SEED: usize = 52;
 
 #[macro_use]
 extern crate gc_derive;
 extern crate gc;
+
+extern crate crossbeam_epoch as epoch;
+extern crate crossbeam_utils as utils;
 
 /// Performs the benchmarks
 pub mod benchmark;
@@ -41,4 +44,3 @@ pub mod sssp;
 pub mod tc;
 
 mod timer;
-

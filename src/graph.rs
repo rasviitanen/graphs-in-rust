@@ -2,7 +2,7 @@ use crate::types::*;
 
 pub type Range<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
-pub trait CSRGraph<V, E> {
+pub trait CSRGraph<'a, V, E> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self;
     fn build_undirected(num_nodes: usize, edge_list: &EdgeList) -> Self;
 

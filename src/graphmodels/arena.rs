@@ -1,8 +1,8 @@
-use generational_arena::{Arena, Index};
-use std::cell::{RefCell, Cell};
-use std::collections::{HashMap, HashSet, VecDeque};
+use crate::graph::{CSRGraph, Range};
 use crate::types::*;
-use crate::graph::{Range, CSRGraph};
+use generational_arena::{Arena, Index};
+use std::cell::{Cell, RefCell};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 type Weight = usize;
 
@@ -28,7 +28,6 @@ impl WeightedEdge for CustomIndex {
     }
 }
 
-
 pub struct ArenaNode<T> {
     node_id: usize,
     value: Option<T>,
@@ -53,8 +52,7 @@ pub struct Graph<T> {
     n_edges: Cell<usize>,
 }
 
-
-impl<T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
+impl<'a, T: Clone> CSRGraph<'a, CustomIndex, CustomIndex> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let graph = Graph::new(true);
         for v in 0..num_nodes {
@@ -102,7 +100,12 @@ impl<T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
 
     fn out_degree(&self, v: NodeId) -> usize {
         if let Some(found) = self.get_vertex(v) {
-            self.vertices.borrow().get(found.index).unwrap().out_edges.len()
+            self.vertices
+                .borrow()
+                .get(found.index)
+                .unwrap()
+                .out_edges
+                .len()
         } else {
             panic!("Vertex not found");
         }
@@ -111,7 +114,12 @@ impl<T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
     fn in_degree(&self, v: NodeId) -> usize {
         println!("Graph inversion is probably disabled... in in_degree()");
         if let Some(found) = self.get_vertex(v) {
-            self.vertices.borrow().get(found.index).unwrap().in_edges.len()
+            self.vertices
+                .borrow()
+                .get(found.index)
+                .unwrap()
+                .in_edges
+                .len()
         } else {
             panic!("Vertex not found");
         }
@@ -153,7 +161,10 @@ impl<T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
     fn vertices(&self) -> Range<CustomIndex> {
         let mut edges = Vec::new();
         for (idx, edge) in self.vertices.borrow().iter() {
-            edges.push(CustomIndex{ index: idx, weight: None });
+            edges.push(CustomIndex {
+                index: idx,
+                weight: None,
+            });
         }
         edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
         Box::new(edges.into_iter())
@@ -165,7 +176,11 @@ impl<T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
             for e in edges {
                 new_edges.insert(e);
             }
-            self.vertices.borrow_mut().get_mut(found.index).unwrap().out_edges = new_edges;
+            self.vertices
+                .borrow_mut()
+                .get_mut(found.index)
+                .unwrap()
+                .out_edges = new_edges;
         }
     }
 
@@ -175,7 +190,11 @@ impl<T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
             for e in edges {
                 new_edges.insert(e);
             }
-            self.vertices.borrow_mut().get_mut(found.index).unwrap().in_edges = new_edges;
+            self.vertices
+                .borrow_mut()
+                .get_mut(found.index)
+                .unwrap()
+                .in_edges = new_edges;
         }
     }
 
@@ -211,30 +230,50 @@ impl<T> Graph<T> {
     pub fn get_vertex(&self, node_id: usize) -> Option<CustomIndex> {
         for (idx, node) in self.vertices.borrow().iter() {
             if node.node_id == node_id {
-                return Some(CustomIndex { index: idx, weight: None });
+                return Some(CustomIndex {
+                    index: idx,
+                    weight: None,
+                });
             }
         }
 
         None
     }
 
-    pub fn add_edge(
-        &self,
-        node1: usize,
-        node2: usize,
-        weight: &Option<Weight>,
-        directed: bool,
-    ) {
+    pub fn add_edge(&self, node1: usize, node2: usize, weight: &Option<Weight>, directed: bool) {
         if let (Some(vertex), Some(edge)) = (self.get_vertex(node1), self.get_vertex(node2)) {
             if !directed {
-                self.vertices.borrow_mut().get_mut(edge.index).unwrap().out_edges
-                .insert(CustomIndex{index: vertex.index, weight: weight.as_ref().map(|x| *x)});
+                self.vertices
+                    .borrow_mut()
+                    .get_mut(edge.index)
+                    .unwrap()
+                    .out_edges
+                    .insert(CustomIndex {
+                        index: vertex.index,
+                        weight: weight.as_ref().map(|x| *x),
+                    });
             } else {
-                self.vertices.borrow_mut().get_mut(edge.index).unwrap().in_edges
-                .insert(CustomIndex{index: vertex.index, weight: weight.as_ref().map(|x| *x)});
+                self.vertices
+                    .borrow_mut()
+                    .get_mut(edge.index)
+                    .unwrap()
+                    .in_edges
+                    .insert(CustomIndex {
+                        index: vertex.index,
+                        weight: weight.as_ref().map(|x| *x),
+                    });
             }
-            if self.vertices.borrow_mut().get_mut(vertex.index).unwrap().out_edges
-            .insert(CustomIndex{index: edge.index, weight: weight.as_ref().map(|x| *x)}) {
+            if self
+                .vertices
+                .borrow_mut()
+                .get_mut(vertex.index)
+                .unwrap()
+                .out_edges
+                .insert(CustomIndex {
+                    index: edge.index,
+                    weight: weight.as_ref().map(|x| *x),
+                })
+            {
                 self.n_edges.update(|x| x + 1);
             }
         } else {

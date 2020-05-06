@@ -42,7 +42,7 @@ type Score = f64;
 type Count = f64;
 type Bitmap = Vec<bool>;
 
-fn pbfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
+fn pbfs<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
     graph: &G,
     source: NodeId,
     path_counts: &mut Vec<Count>,
@@ -94,9 +94,9 @@ fn pbfs<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     depth_index.push(queue_clone)
 }
 
-pub fn brandes<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
+pub fn brandes<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
     graph: &G,
-    sp: &mut SourcePicker<V, E, G>,
+    sp: &mut SourcePicker<'a, V, E, G>,
     num_iters: NodeId,
 ) -> Vec<Score> {
     let mut scores = vec![0.0; graph.num_nodes()];

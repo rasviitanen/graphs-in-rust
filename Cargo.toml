@@ -12,6 +12,7 @@ criterion = { version = "0.3.2", git = "https://github.com/rasviitanen/criterion
 criterion-macro = "0.3.2"
 time = "0.1.34"
 rand = "0.7"
+fastgraph = { path = "../fastgraph" }
 # Get raton form git to enable `step_by`, as it is
 # currently not available in the latest published version (1.3.0)
 rayon = { git = "https://github.com/rayon-rs/rayon" }
@@ -21,3 +22,6 @@ gc = "*"
 gc_derive = "*"
 generational-arena = "0.2.7"
 bacon_rajan_cc = "0.2"
+crossbeam-epoch = "0.8"
+crossbeam-utils = "0.7"
+lock_free_bloomfilter = { path = "../lock-free-bloomfilter" }

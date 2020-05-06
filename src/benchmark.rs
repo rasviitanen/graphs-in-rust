@@ -8,7 +8,7 @@ type GraphFuncTwo<T, E> = Box<dyn FnMut(&T, &mut E) -> ()>;
 type AnalysisFunc = Box<dyn Fn() -> ()>;
 type VerifyFunc = Box<dyn Fn() -> ()>;
 
-pub struct SourcePicker<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>> {
+pub struct SourcePicker<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>> {
     given_source: Option<NodeId>,
     rng: rand::rngs::ThreadRng,
     udist: rand::distributions::Uniform<usize>,
@@ -16,7 +16,7 @@ pub struct SourcePicker<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>> {
     _phantom: PhantomData<(V, E)>,
 }
 
-impl<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<'a, V, E, G> {
+impl<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>> SourcePicker<'a, V, E, G> {
     pub fn new(graph: &'a G) -> Self {
         Self {
             given_source: None,
@@ -90,7 +90,7 @@ impl<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>> SourcePicker<'a, V, E, G> {
 }
 
 /// Benchmarks a given `kernel`
-pub fn benchmark_kernel<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
+pub fn benchmark_kernel<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
     graph: &G,
     mut kernel: GraphFunc<G>,
     stats: AnalysisFunc,
@@ -107,7 +107,7 @@ pub fn benchmark_kernel<V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 }
 
 /// Benchmarks a given `kernel`
-pub fn benchmark_kernel_with_sp<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
+pub fn benchmark_kernel_with_sp<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
     graph: &'a G,
     source_picker: &'a mut SourcePicker<'a, V, E, G>,
     mut kernel: GraphFuncTwo<G, SourcePicker<'a, V, E, G>>,

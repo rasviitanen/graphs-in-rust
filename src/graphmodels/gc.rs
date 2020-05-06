@@ -1,7 +1,7 @@
 use crate::graph::{CSRGraph, Range};
 use crate::types::*;
-use std::cell::{Cell, RefCell};
 use gc::{Finalize, Gc, GcCell, Trace};
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Trace, Finalize)]
@@ -21,7 +21,9 @@ impl<T: Trace> AsNode for Gc<GcCell<Node<T>>> {
 
 impl<T: Trace> WeightedEdge for Gc<GcCell<Node<T>>> {
     fn get_weight(&self) -> usize {
-        self.borrow().weight.expect("Weights must be assigned before used")
+        self.borrow()
+            .weight
+            .expect("Weights must be assigned before used")
     }
 
     fn set_weight(&mut self, weight: usize) {
@@ -62,7 +64,8 @@ impl<T: Trace> Node<T> {
                     edge.set_weight(*w);
                 }
                 edge
-            }).is_none()
+            })
+            .is_none()
     }
 
     fn add_out_edge(
@@ -96,7 +99,7 @@ pub struct Graph<T: Trace + 'static> {
     directed: bool,
 }
 
-impl<T: Clone + Trace> CSRGraph<Gc<GcCell<Node<T>>>, Gc<GcCell<Node<T>>>> for Graph<T> {
+impl<'a, T: Clone + Trace> CSRGraph<'a, Gc<GcCell<Node<T>>>, Gc<GcCell<Node<T>>>> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let graph = Graph::new(true);
         for v in 0..num_nodes {

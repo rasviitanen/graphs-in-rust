@@ -1,8 +1,8 @@
 use crate::graph::{CSRGraph, Range};
 use crate::types::*;
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
-use std::cell::Cell;
 
 #[derive(Clone)]
 pub struct WrappedNode<T> {
@@ -74,7 +74,8 @@ impl<T> Node<T> {
             return false;
         }
 
-        this.write().expect("Could not write")
+        this.write()
+            .expect("Could not write")
             .in_edges
             .insert(node_id, WrappedNode::from_node(Arc::clone(edge), weight))
             .is_none()
@@ -92,7 +93,8 @@ impl<T> Node<T> {
             return false;
         }
 
-        this.write().expect("Could not write")
+        this.write()
+            .expect("Could not write")
             .out_edges
             .insert(node_id, WrappedNode::from_node(Arc::clone(edge), weight))
             .is_none()
@@ -105,7 +107,7 @@ pub struct Graph<T> {
     directed: bool,
 }
 
-impl<T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
+impl<'a, T: Clone> CSRGraph<'a, WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let graph = Graph::new(true);
         for v in 0..num_nodes {
@@ -245,13 +247,18 @@ impl<T> Graph<T> {
     }
 
     pub fn find_vertex(&self, vertex: usize) -> Option<Arc<RwLock<Node<T>>>> {
-        self.vertices.read().expect("Could not read").get(&vertex).map(|v| Arc::clone(v))
+        self.vertices
+            .read()
+            .expect("Could not read")
+            .get(&vertex)
+            .map(|v| Arc::clone(v))
     }
 
     pub fn add_vertex(&self, node_id: usize, value: Option<T>) -> Arc<RwLock<Node<T>>> {
         let new_node = Node::new(node_id, value);
         self.vertices
-            .write().expect("Could not write")
+            .write()
+            .expect("Could not write")
             .entry(node_id)
             .or_insert(WrappedNode::from_node(new_node.clone(), &None));
         new_node
