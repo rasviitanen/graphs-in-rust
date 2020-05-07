@@ -15,7 +15,7 @@ use gapbs::builder::BuilderBase;
 use gapbs::graphmodels;
 use gapbs::types::*;
 
-type Graph = graphmodels::rc::Graph<usize>;
+type Graph<'a> = graphmodels::epoch::Graph<'a, usize>;
 
 fn main() {
     println!(
@@ -32,7 +32,7 @@ fn main() {
 
     let mut builder = BuilderBase::new();
     let graph: Graph = builder.make_graph();
-    let mut source_picker = SourcePicker::new(&graph);
+    let mut source_picker =  SourcePicker::new(&graph);
     let mut source_picker1 = SourcePicker::new(&graph);
     let mut source_picker2 = SourcePicker::new(&graph);
     let mut source_picker3 = SourcePicker::new(&graph);

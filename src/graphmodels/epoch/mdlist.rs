@@ -133,11 +133,11 @@ impl<'a: 't + 'g, 't, 'g, T: 'a, P: 'a> Iterator for Iter<'a, 't, 'g, T, P> {
 
                 let node = node.as_ref().unwrap();
 
-                // // The root node might not be logically added,
-                // // so if it has no value, we skip it
+                // The root node might not be logically added,
+                // so if it has no value, we skip it
                 // if node.val.is_some() {
                 //     return Some(Entry {
-                //         node: node,
+                //         node,
                 //         _parent: self.parent,
                 //         _guard: self.guard,
                 //     });

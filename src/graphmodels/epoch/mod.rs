@@ -17,11 +17,20 @@ use std::sync::RwLock;
 use crate::graph::{CSRGraph, Range};
 use crate::types::*;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum Direction {
     In,
     Out,
     Both,
+}
+
+#[derive(Clone, Copy)]
+pub struct CustomNode<T: Copy + Clone + Into<usize>>(T);
+
+impl<T: Copy + Clone + Into<usize>> AsNode for CustomNode<T> {
+    fn as_node(&self) -> NodeId {
+        self.0.into()
+    }
 }
 
 pub trait Edge<'a, T> {
@@ -38,7 +47,7 @@ pub trait Vertex {
 unsafe impl Send for EdgeInfo {}
 unsafe impl Sync for EdgeInfo {}
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct EdgeInfo {
     // pub vertex_ref: RefEntry<'a, 'a, T, Self>,
     direction: Direction,
@@ -87,15 +96,20 @@ pub struct Graph<'a, T: Clone> {
     inner: AdjacencyList<'a, T, EdgeInfo>,
     directed: bool,
     num_nodes: usize,
+    num_edges_directed: usize,
+    num_edges_undirected: usize,
 }
 
 type E = EdgeInfo;
+
 impl<'a, T: 'a + Clone> Graph<'a, T> {
     pub fn new(size_hint: i64, directed: bool) -> Self {
         Self {
             inner: AdjacencyList::new(size_hint),
             directed,
             num_nodes: 0,
+            num_edges_directed: 0,
+            num_edges_undirected: 0,
         }
     }
 
@@ -139,7 +153,7 @@ impl<'a, T: 'a + Clone> Graph<'a, T> {
         }
     }
 
-    pub fn vertices<'t, 'g>(&'a self, guard: &'g Guard) -> IterRefEntry<'a, 't, 'g, T, E> {
+    pub fn iter_vertices<'t, 'g>(&'a self, guard: &'g Guard) -> IterRefEntry<'a, 't, 'g, T, E> {
         self.inner.iter(guard)
     }
 
@@ -178,11 +192,11 @@ impl<'a, T: 'a + Clone> Graph<'a, T> {
     }
 }
 
-impl<'a, V: Clone> CSRGraph<V, EdgeInfo> for Graph<'_, V> {
+impl<'a, V: Copy + Clone + Into<usize>> CSRGraph<CustomNode<V>, EdgeInfo> for Graph<'_, V> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let mut graph = Graph::new(num_nodes as i64, true);
 
-        for v in 0..num_nodes {
+        for v in 1..num_nodes {
             graph.add_vertex(v, None);
         }
 
@@ -201,6 +215,7 @@ impl<'a, V: Clone> CSRGraph<V, EdgeInfo> for Graph<'_, V> {
                 weight: w.as_ref().map(|x| *x),
             };
 
+            graph.num_edges_directed += 1;
             graph.add_edge(*e, edge_info_ev);
             graph.add_edge(*v, edge_info_ve);
         }
@@ -211,7 +226,7 @@ impl<'a, V: Clone> CSRGraph<V, EdgeInfo> for Graph<'_, V> {
     fn build_undirected(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let mut graph = Graph::new(num_nodes as i64, false);
 
-        for v in 0..num_nodes {
+        for v in 1..num_nodes {
             graph.add_vertex(v, None);
         }
 
@@ -251,29 +266,29 @@ impl<'a, V: Clone> CSRGraph<V, EdgeInfo> for Graph<'_, V> {
     }
 
     fn num_edges_directed(&self) -> usize {
-        unimplemented!();
-        // let mut sum = 0;
-        // for (_, v) in self.vertices.borrow().iter() {
-        //     sum += v.out_edges.len();
-        // }
-        // sum
+        self.num_edges_directed
     }
 
     fn out_degree(&self, v: NodeId) -> usize {
+        if v == 0 {
+            // Our datastructure cannot handle id 0
+            return 0;
+        }
+
         let guard = &epoch::pin();
         if let Some(found) = self.find_vertex(v) {
             let mut count = 0;
-            let edges = found.get().list.as_ref().unwrap().iter(guard);
-            // while let Some(edge) = edges.next() {
-            //     if let Some(present_edge) =  edge.value() {
-            //         match present_edge.direction {
-            //             Direction::Out => {
-            //                 count += 1;
-            //             },
-            //             _ => {}
-            //         }
-            //     }
-            // }
+            let mut edges = found.get().list.as_ref().unwrap().iter(guard);
+            while let Some(edge) = edges.next() {
+                if let Some(present_edge) =  edge.value() {
+                    match present_edge.direction {
+                        Direction::Out => {
+                            count += 1;
+                        },
+                        _ => {}
+                    }
+                }
+            }
             count
         } else {
             panic!("Vertex not found");
@@ -281,70 +296,96 @@ impl<'a, V: Clone> CSRGraph<V, EdgeInfo> for Graph<'_, V> {
     }
 
     fn in_degree(&self, v: NodeId) -> usize {
-        unimplemented!();
-        // if let Some(found) = self.find_vertex(v) {
-        //     let mut count = 0;
-        //     let guard = &epoch::pin();
-        //     let edges = found.get().list.as_ref().unwrap().iter(guard);
-        //     while let Some(edge) = edges.next() {
-        //         if let Some(present_edge) =  edge.value() {
-        //             match present_edge.direction {
-        //                 Direction::In => {
-        //                     count += 1;
-        //                 },
-        //                 _ => {}
-        //             }
-        //         }
-        //     }
-        //     count
-        // } else {
-        //     panic!("Vertex not found");
-        // }
+        if v == 0 {
+            // Our datastructure cannot handle id 0
+            return 0;
+        }
+
+        if let Some(found) = self.find_vertex(v) {
+            let mut count = 0;
+            let guard = &epoch::pin();
+            let mut edges = found.get().list.as_ref().unwrap().iter(guard);
+            while let Some(edge) = edges.next() {
+                if let Some(present_edge) =  edge.value() {
+                    match present_edge.direction {
+                        Direction::In => {
+                            count += 1;
+                        },
+                        _ => {}
+                    }
+                }
+            }
+            count
+        } else {
+            panic!("Vertex not found");
+        }
     }
 
     fn out_neigh(&self, v: NodeId) -> Range<E> {
-        unimplemented!();
-        // if let Some(found) = self.find_vertex(v) {
-        //     let mut picked_edges = Vec::new();
-        //     let guard = &epoch::pin();
-        //     let edges = found.get().list.as_ref().unwrap();
-        //     // edges.iter(guard)
-        //     //     .filter(|e| {
-        //     //         if let Some(present_edge) = e.value() {
-        //     //             match present_edge.direction {
-        //     //                 Direction::Out => {
-        //     //                     return true;
-        //     //                 },
-        //     //                 _ => {
-        //     //                     return false;
-        //     //                 }
-        //     //             }
-        //     //         }
-        //     //         false
-        //     //     })
-        //     //     .for_each(|e| {
-        //     //         picked_edges.push(*e.value().unwrap())
-        //     //     });
+        if v == 0 {
+            // Our datastructure cannot handle id 0
+            return Box::new(Vec::new().into_iter());
+        }
+        if let Some(found) = self.find_vertex(v) {
+            let mut picked_edges = Vec::new();
+            let guard = &epoch::pin();
+            let edges = found.get().list.as_ref().unwrap();
+            edges.iter(guard)
+                .filter(|e| {
+                    if let Some(present_edge) = e.value() {
+                        match present_edge.direction {
+                            Direction::Out => {
+                                return true;
+                            },
+                            _ => {
+                                return false;
+                            }
+                        }
+                    }
+                    false
+                })
+                .for_each(|e| {
+                    picked_edges.push(e.value().unwrap().clone())
+                });
 
-        //     Box::new(picked_edges.into_iter())
-        // } else {
-        //     panic!("Vertex not found");
-        // }
+            Box::new(picked_edges.into_iter())
+        } else {
+            panic!("Vertex not found");
+        }
     }
 
     fn in_neigh(&self, v: NodeId) -> Range<E> {
-        unimplemented!();
+        if v == 0 {
+            // Our datastructure cannot handle id 0
+            return Box::new(Vec::new().into_iter());
+        }
 
-        // if let Some(found) = self.get_vertex(v) {
-        //     let mut edges = Vec::new();
-        //     for edge in &self.vertices.borrow().get(found.index).unwrap().in_edges {
-        //         edges.push(edge.clone());
-        //     }
-        //     edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
-        //     Box::new(edges.into_iter())
-        // } else {
-        //     panic!("Vertex not found");
-        // }
+        if let Some(found) = self.find_vertex(v) {
+            let mut picked_edges = Vec::new();
+            let guard = &epoch::pin();
+            let edges = found.get().list.as_ref().unwrap();
+            edges.iter(guard)
+                .filter(|e| {
+                    if let Some(present_edge) = e.value() {
+                        match present_edge.direction {
+                            Direction::In => {
+                                return true;
+                            },
+                            _ => {
+                                return false;
+                            }
+                        }
+                    }
+                    false
+                })
+                .for_each(|e| {
+                    picked_edges.push(e.value().unwrap().clone())
+                });
+
+            Box::new(picked_edges.into_iter())
+        } else {
+            panic!("Vertex not found");
+        }
     }
 
     fn print_stats(&self) {
@@ -354,15 +395,15 @@ impl<'a, V: Clone> CSRGraph<V, EdgeInfo> for Graph<'_, V> {
         println!("---------------------------");
     }
 
-    fn vertices(&self) -> Range<V> {
-        unimplemented!();
+    fn vertices(&self) -> Range<CustomNode<V>> {
+        let guard = &epoch::pin();
+        let mut vertices = Vec::new();
+        let mut iter = self.inner.iter(guard);
+        while let Some(v) = iter.next() {
+            let vertex_node_id = v.get().key;
+        }
 
-        // let mut edges = Vec::new();
-        // for (idx, edge) in self.vertices.borrow().iter() {
-        //     edges.push(CustomIndex{ index: idx, weight: None });
-        // }
-        // edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
-        // Box::new(edges.into_iter())
+        Box::new(vertices.into_iter())
     }
 
     fn replace_out_edges(&self, v: NodeId, edges: Vec<E>) {

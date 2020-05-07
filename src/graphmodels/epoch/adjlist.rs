@@ -100,7 +100,7 @@ impl<'a, 't, T, E> std::ops::Deref for RefEntry<'a, 't, T, E> {
 }
 
 pub struct IterRefEntry<'a: 't + 'g, 't, 'g, T: 'a, E: 'a> {
-    parent: &'a AdjacencyList<'a, T, E>,
+    parent: &'t AdjacencyList<'a, T, E>,
     guard: &'g Guard,
     head: Option<RefEntry<'a, 't, T, E>>,
 }
@@ -121,13 +121,21 @@ impl<'a: 't + 'g, 't, 'g, T: 'a + Clone, E: 'a + Clone> Iterator for IterRefEntr
                     .next
                     .load(SeqCst, guard),
             };
+            // Skip tail
+            if next.key == usize::max_value() {
+                return None;
+            }
             self.head.replace(next);
             self.head.as_ref().map(RefEntry::clone)
         } else {
-            self.head.replace(RefEntry {
-                node: self.parent.head.load(SeqCst, guard),
-            });
-            self.head.as_ref().map(RefEntry::clone)
+            // Skip head
+            unsafe {
+                let next = self.parent.head.load(SeqCst, guard).as_ref().unwrap().next.load(SeqCst, guard);
+                self.head.replace(RefEntry {
+                    node: next.clone(),
+                });
+                self.head.as_ref().map(RefEntry::clone)
+            }
         }
     }
 }
@@ -180,7 +188,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         }
     }
 
-    pub fn iter<'t>(&'a self, guard: &'g Guard) -> IterRefEntry<'a, 't, 'g, T, E> {
+    pub fn iter<'t>(&'t self, guard: &'g Guard) -> IterRefEntry<'a, 't, 'g, T, E>
+        where 'a: 't + 'g {
         IterRefEntry {
             parent: self,
             guard,
@@ -408,8 +417,6 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         pred_dim: &mut usize,
         guard: &Guard,
     ) -> ReturnCode<RefEntry<'a, 't, T, E>>
-    where
-        'a: 't,
     {
         let guard = &*(guard as *const _);
         *inserted = Shared::null();
@@ -803,7 +810,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                     n_desc = Atomic::new(NodeDesc::new(desc, opid));
                 }
 
-                let current_desc_ref = g_current_desc.as_ref().unwrap();
+                let current_desc_ref = g_current_desc.as_ref().expect("No current desc");
 
                 if Self::is_same_operation(
                     current_desc_ref,
