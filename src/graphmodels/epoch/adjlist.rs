@@ -39,6 +39,9 @@ fn set_delinv(p: usize) -> usize {
     p | 2
 }
 
+unsafe impl<'a, T: Send + Sync, E: Send + Sync> Send for Node<'a, T, E> {}
+unsafe impl<'a, T: Send + Sync, E: Send + Sync> Sync for Node<'a, T, E> {}
+
 /// Marked `repr(C)` to improve cache locality,
 /// as the dynamically sized list will be placed last,
 /// making the other fields be closer
@@ -200,7 +203,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
     pub fn execute_ops<'t>(
         &'t self,
         desc: *const Desc<'a, T, E>,
-        sender: std::sync::mpsc::Sender<ReturnCode<RefEntry<'a, 't, T, E>>>,
+        sender: std::sync::mpsc::Sender<ReturnCode<Atomic<Node<'a, T, E>>>>,
         guard: &'g Guard,
     ) where
         'a: 't,
@@ -237,7 +240,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         inserted: &mut Shared<'t, Node<'a, T, E>>,
         pred: &mut Shared<'t, Node<'a, T, E>>,
         guard: &Guard,
-    ) -> ReturnCode<RefEntry<'a, 't, T, E>>
+    ) -> ReturnCode<Atomic<Node<'a, T, E>>>
     where
         'a: 't,
     {
@@ -311,7 +314,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                         .is_ok()
                     {
                         *inserted = *current;
-                        return ReturnCode::Inserted(RefEntry { node: *inserted });
+                        return ReturnCode::Inserted(self.cursor.clone());
+                        // return ReturnCode::Inserted(RefEntry { node: *inserted });
                     }
                 }
             } else {
@@ -344,7 +348,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                     *inserted = p;
                     self.cursor.store(*inserted, Relaxed);
                     // self.bloom_filter.set(vertex);
-                    return ReturnCode::Inserted(RefEntry { node: *inserted });
+                    return ReturnCode::Inserted(self.cursor.clone());
+                    // return ReturnCode::Inserted(RefEntry { node: *inserted });
                 }
 
                 *current = if is_marked(next.load(SeqCst, epoch::unprotected()).tag()) == 0 {
@@ -363,10 +368,10 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
     /// Should not be called directly?
     #[inline]
     pub unsafe fn connect<'t>(
-        vertex_node: &RefEntry<'a, 't, T, E>,
+        vertex_node: &Node<'a, T, E>,
         edge: usize,
         edge_node: E,
-    ) -> ReturnCode<RefEntry<'a, 't, T, E>> {
+    ) -> ReturnCode<Atomic<Node<'a, T, E>>> {
         let dim = &mut 0;
         let pred_dim = &mut 0;
         let guard = &*(&epoch::pin() as *const _);
@@ -375,7 +380,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
 
         // Try to find the vertex to which the current key is adjacenct,
         // if it is not found, we check if the vertex and edge are the same vertex.
-        let current_ref = vertex_node.get();
+        let current_ref = vertex_node;
         let mdlist = &current_ref.list.as_ref().expect("NO MD LIST");
         let md_current = &mut mdlist.head().load(SeqCst, guard);
 
@@ -416,7 +421,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         dim: &mut usize,
         pred_dim: &mut usize,
         guard: &Guard,
-    ) -> ReturnCode<RefEntry<'a, 't, T, E>>
+    ) -> ReturnCode<Atomic<Node<T, E>>>
     {
         let guard = &*(guard as *const _);
         *inserted = Shared::null();
@@ -593,7 +598,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         deleted: &mut Shared<'t, Node<'a, T, E>>,
         pred: &mut Shared<'t, Node<'a, T, E>>,
         guard: &Guard,
-    ) -> ReturnCode<RefEntry<'a, 't, T, E>>
+    ) -> ReturnCode<Atomic<Node<T, E>>>
     where
         'a: 't,
     {
@@ -645,7 +650,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                         // complete to perform physical updates
                         if pending_status.compare_exchange(true, false).is_ok() {
                             *deleted = *current;
-                            return ReturnCode::Deleted(RefEntry { node: *deleted });
+                            return ReturnCode::Success;
+                            // return ReturnCode::Deleted(RefEntry { node: *deleted });
                         }
                     }
 
@@ -685,7 +691,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                         let pending_status = &(*desc).pending[opid];
                         if pending_status.compare_exchange(true, false).is_ok() {
                             *deleted = *current;
-                            return ReturnCode::Deleted(RefEntry { node: *deleted });
+                            return ReturnCode::Success;
+                            // return ReturnCode::Deleted(RefEntry { node: *deleted });
                         }
                     }
                 } else {
@@ -709,7 +716,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         dim: &mut usize,
         pred_dim: &mut usize,
         guard: &Guard,
-    ) -> ReturnCode<RefEntry<'a, 't, T, E>> {
+    ) -> ReturnCode<Atomic<Node<T, E>>> {
         // Lifetime hack to bind guard to lifetime of self
         let guard = &*(guard as *const _);
         *deleted = Shared::null();
@@ -777,7 +784,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         desc: *const Desc<'a, T, E>,
         opid: usize,
         guard: &Guard,
-    ) -> ReturnCode<RefEntry<'a, 't, T, E>>
+    ) -> ReturnCode<Atomic<Node<'a, T, E>>>
     where
         'a: 't,
     {
@@ -830,7 +837,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                         .compare_and_set(g_current_desc, n_desc.load(SeqCst, guard), SeqCst, guard)
                         .is_ok()
                     {
-                        return ReturnCode::Found(RefEntry { node: *current });
+                        return ReturnCode::Success;
+                        // return ReturnCode::Found(RefEntry { node: *current });
                     }
                 } else {
                     return ReturnCode::Fail("Requested key does not exist".into());
@@ -847,7 +855,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         &'t self,
         desc: *const Desc<'a, T, E>,
         mut opid: usize,
-        sender: &Option<std::sync::mpsc::Sender<ReturnCode<RefEntry<'a, 't, T, E>>>>,
+        sender: &Option<std::sync::mpsc::Sender<ReturnCode<Atomic<Node<'a, T, E>>>>>,
         guard: &'g Guard,
     ) where
         'a: 't,
@@ -907,7 +915,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                     OpType::Insert(key, value) => {
                         let mut inserted = Shared::null();
                         let mut pred = Shared::null();
-                        self.insert_vertex(
+                        ret = self.insert_vertex(
                             *key,
                             value,
                             desc,
@@ -1355,7 +1363,7 @@ impl<'a: 't, 't, N, E> Transaction<'a, 't, N, E> {
 
 impl<'a: 't, 't, N: Clone, E: Clone> Transaction<'a, 't, N, E> {
     #[must_use]
-    pub fn execute(self) -> std::sync::mpsc::Receiver<ReturnCode<RefEntry<'a, 't, N, E>>> {
+    pub fn execute(self) -> std::sync::mpsc::Receiver<ReturnCode<Atomic<Node<'a, N, E>>>> {
         let (tx, rx) = std::sync::mpsc::channel();
         let guard = &epoch::pin();
         self.adjlist.execute_ops(self.ops, tx, guard);
@@ -1363,653 +1371,653 @@ impl<'a: 't, 't, N: Clone, E: Clone> Transaction<'a, 't, N, E> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    type NodeData = u64;
-
-    #[derive(Clone)]
-    struct EdgeInfo<'a, T> {
-        pub vertex_ref: &'a Node<'a, T, Self>,
-    }
-
-    impl<'a, T> EdgeInfo<'a, T> {
-        pub fn new(vertex_ref: Shared<'a, Node<T, Self>>) -> Self {
-            unsafe {
-                EdgeInfo {
-                    vertex_ref: vertex_ref.as_ref().unwrap(),
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn insertion() {
-        let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(5);
-
-        let tx = adjlist.txn(vec![
-            OpType::Insert(1, Some(123)),
-            OpType::Insert(2, Some(123)),
-            OpType::Insert(3, Some(123)),
-            OpType::Insert(4, Some(123)),
-            OpType::Insert(5, Some(123)),
-        ]);
-        let rx = tx.execute();
-
-        let mut n_ok = 0;
-        while let Ok(ReturnCode::Inserted(_)) = rx.recv() {
-            n_ok += 1;
-        }
-
-        assert_eq!(n_ok, 5);
-    }
-
-    #[test]
-    fn insert_and_find() {
-        let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(5);
-
-        let tx = adjlist.txn(vec![OpType::Insert(1, Some(123))]);
-        tx.execute().recv().unwrap();
-
-        let tx = adjlist.txn(vec![OpType::Find(1)]);
-        let rx = tx.execute();
-
-        if let Ok(ReturnCode::Found(entry)) = rx.recv() {
-            assert_eq!(entry.get().value.load(), Some(123));
-        }
-    }
-
-    #[test]
-    fn edge_to_self() {
-        let guard = &epoch::pin();
-        let adjlist = AdjacencyList::<u64, u64>::new(5);
-
-        let ops = Desc::alloc(vec![Operator {
-            optype: OpType::Insert(1, Some(123)),
-        }]);
-        let (tx1, _rx1) = std::sync::mpsc::channel();
-        adjlist.execute_ops(ops, tx1, guard);
-
-        let ops2 = Desc::alloc(vec![Operator {
-            optype: OpType::Insert(1, Some(123)),
-        }]);
-        let (tx2, _) = std::sync::mpsc::channel();
-        adjlist.execute_ops(ops2, tx2, guard);
-    }
-
-    #[test]
-    fn find_vertex() {
-        let guard = &epoch::pin();
-        let adjlist = AdjacencyList::<u64, u64>::new(5);
-        // let empty_desc =
-
-        let ops = Desc::alloc(vec![
-            Operator {
-                optype: OpType::Insert(1, Some(1)),
-            },
-            Operator {
-                optype: OpType::Insert(2, Some(2)),
-            },
-            Operator {
-                optype: OpType::Insert(3, Some(3)),
-            },
-        ]);
-        let (tx1, _) = std::sync::mpsc::channel();
-        adjlist.execute_ops(ops, tx1, guard);
-
-        unsafe {
-            if let ReturnCode::Found(e) = adjlist.find(1, &Desc::empty(), 0, guard) {
-                assert_eq!(e.node.as_ref().unwrap().value.load(), Some(1));
-            }
-        }
-
-        unsafe {
-            if let ReturnCode::Found(e) = adjlist.find(2, &Desc::empty(), 0, guard) {
-                assert_eq!(e.node.as_ref().unwrap().value.load(), Some(2));
-            }
-        }
-
-        unsafe {
-            if let ReturnCode::Found(e) = adjlist.find(3, &Desc::empty(), 0, guard) {
-                assert_eq!(e.node.as_ref().unwrap().value.load(), Some(3));
-            }
-        }
-    }
-
-    #[test]
-    fn cycle_insertion() {
-        let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(5);
-        let guard = &epoch::pin();
-
-        let ops = Desc::alloc(vec![
-            Operator {
-                optype: OpType::Insert(1, Some(1)),
-            },
-            Operator {
-                optype: OpType::Insert(2, Some(2)),
-            },
-        ]);
-        let (tx, rx) = std::sync::mpsc::channel();
-        adjlist.execute_ops(ops, tx, guard);
-
-        if let (ReturnCode::Inserted(e1), ReturnCode::Inserted(e2)) =
-            (rx.recv().unwrap(), rx.recv().unwrap())
-        {
-            unsafe {
-                AdjacencyList::connect(&e1, 2, EdgeInfo::new(e2.node));
-                AdjacencyList::connect(&e2, 1, EdgeInfo::new(e1.node));
-            }
-        }
-    }
-
-    #[test]
-    fn find_non_existing_is_err() {
-        let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(5);
-        let find_txn = adjlist.txn(vec![OpType::Find(2)]);
-        let res = find_txn.execute();
-        let mut failed = false;
-        if let Ok(ReturnCode::Fail(_)) = res.recv() {
-            failed = true;
-        }
-        assert_eq!(failed, true);
-    }
-
-    #[test]
-    fn large_insertion() {
-        let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1000);
-
-        let mut ops = Vec::new();
-        for i in 1..1000 {
-            ops.push(OpType::Insert(i, Some(123)))
-        }
-        adjlist.txn(ops).execute().recv().unwrap();
-
-        let mut ops = Vec::new();
-        for i in 1..1000 {
-            ops.push(OpType::Find(i))
-        }
-        let find_txn = adjlist.txn(ops);
-        let res = find_txn.execute();
-
-        let mut found_count = 0;
-        while let Ok(ReturnCode::Found(_)) = res.recv() {
-            found_count += 1;
-        }
-        assert_eq!(found_count, 1000 - 1);
-    }
-
-    // #[test]
-    // fn connect() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(123)));
-    //     ops.push(OpType::Insert(2, Some(123)));
-    //     let txn = adjlist.txn(ops).wait();
-
-    //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2)) = (&txn[0], &txn[1]) {
-    //         // OK
-    //         let mut ops = Vec::new();
-    //         ops.push(OpType::Connect(*v1, 2, Some(EdgeInfo::new(*v2))));
-    //         adjlist.txn(ops).wait();
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-    // }
-
-    // #[test]
-    // fn insert_then_delete_then_find_vertex() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(123)));
-    //     adjlist.txn(ops).wait();
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Delete(1));
-    //     adjlist.txn(ops).wait();
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Find(1));
-    //     let res = adjlist.txn(ops).wait();
-
-    //     match res[0] {
-    //         ReturnCode::Fail => {}
-    //         _ => panic!("Node was found"),
-    //     }
-    // }
-
-    // #[test]
-    // fn held_reference_is_valid_after_delete() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(123)));
-    //     let ret = adjlist.txn(ops).wait();
-
-    //     let reference = match ret[0] {
-    //         ReturnCode::Inserted(e) => Some(*e),
-    //         _ => None,
-    //     }
-    //     .and_then(|r| unsafe { r.as_ref() })
-    //     .unwrap();
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Delete(1));
-    //     adjlist.txn(ops).wait();
-
-    //     assert_eq!(reference.value(), Some(123));
-    // }
-
-    // #[test]
-    // fn held_reference_is_not_changed_after_reinsertion() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(123)));
-    //     let ret = adjlist.txn(ops).wait();
-
-    //     let reference = match ret[0] {
-    //         ReturnCode::Inserted(e) => Some(*e),
-    //         _ => None,
-    //     }
-    //     .and_then(|r| unsafe { r.as_ref() })
-    //     .unwrap();
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Delete(1));
-    //     adjlist.txn(ops).wait();
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(345)));
-    //     adjlist.txn(ops).wait();
-
-    //     assert_eq!(reference.value(), Some(123));
-    // }
-
-    // #[test]
-    // fn held_reference_is_changed_after_update() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(123)));
-    //     let ret = adjlist.txn(ops).wait();
-
-    //     let reference = match ret[0] {
-    //         ReturnCode::Inserted(e) => Some(*e),
-    //         _ => None,
-    //     }
-    //     .and_then(|r| unsafe { r.as_ref() })
-    //     .unwrap();
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(345)));
-    //     adjlist.txn(ops).wait();
-
-    //     assert_eq!(reference.value(), Some(345));
-    // }
-
-    // #[test]
-    // fn delete_edge_created_with_insert_edge() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-    //     let guard = &epoch::pin();
-    //     // Insert Nodes
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(123)));
-    //     ops.push(OpType::Insert(2, Some(123)));
-    //     let insertions = adjlist.txn(ops).wait();
-
-    //     // Insert Edge
-    //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2)) =
-    //         (&insertions[0], &insertions[1])
-    //     {
-    //         // OK
-    //         let mut ops = Vec::new();
-    //         ops.push(OpType::InsertEdge(1, 2, Some(EdgeInfo::new(*v2))));
-    //         adjlist.txn(ops).wait();
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-
-    //     // Delete edge
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::DeleteEdge(1, 2));
-    //     let deletions = adjlist.txn(ops).wait();
-    //     if let ReturnCode::Success = &deletions[0] {
-    //     } else {
-    //         panic!("Could not delete edge");
-    //     }
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Find(1));
-    //     let res = adjlist.txn(ops).wait();
-
-    //     if let ReturnCode::Found(v) = &res[0] {
-    //         unsafe {
-    //             let vertex_ref = v.as_ref().unwrap();
-    //             assert_eq!(
-    //                 vertex_ref.list.as_ref().unwrap().get(2, guard).is_err(),
-    //                 true
-    //             )
-    //         }
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-    // }
-
-    // #[test]
-    // fn deleted_edge_is_not_found() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-    //     let guard = &epoch::pin();
-    //     // Insert Nodes
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(123)));
-    //     ops.push(OpType::Insert(2, Some(123)));
-    //     let insertions = adjlist.txn(ops).wait();
-
-    //     // Insert Edge
-    //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2)) =
-    //         (&insertions[0], &insertions[1])
-    //     {
-    //         // OK
-    //         let mut ops = Vec::new();
-    //         ops.push(OpType::InsertEdge(1, 2, Some(EdgeInfo::new(*v2))));
-    //         adjlist.txn(ops).wait();
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-
-    //     // Delete edge
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::DeleteEdge(1, 2));
-    //     adjlist.txn(ops).wait();
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Find(1));
-    //     let res = adjlist.txn(ops).wait();
-
-    //     if let ReturnCode::Found(v) = &res[0] {
-    //         unsafe {
-    //             let vertex_ref = v.as_ref().unwrap();
-    //             let child = vertex_ref.list.as_ref().unwrap().get(2, guard);
-    //             assert_eq!(child.is_err(), true);
-    //         }
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-    // }
-
-    // #[test]
-    // fn get_child_info() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-    //     let guard = &epoch::pin();
-    //     // Insert Nodes
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(123)));
-    //     ops.push(OpType::Insert(2, Some(456)));
-    //     let insertions = adjlist.txn(ops).wait();
-
-    //     // Insert Edge
-    //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2)) =
-    //         (&insertions[0], &insertions[1])
-    //     {
-    //         let mut ops = Vec::new();
-    //         ops.push(OpType::Connect(*v1, 2, Some(EdgeInfo::new(*v2))));
-    //         adjlist.txn(ops).wait();
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Find(1));
-    //     let res = adjlist.txn(ops).wait();
-
-    //     if let ReturnCode::Found(v) = &res[0] {
-    //         unsafe {
-    //             let vertex_ref = v.as_ref().unwrap();
-    //             let child = vertex_ref.list.as_ref().unwrap().get(2, guard).unwrap();
-    //             assert_eq!(
-    //                 child.value().unwrap().vertex_ref.as_ref().unwrap().value(),
-    //                 Some(456)
-    //             )
-    //         }
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-    // }
-
-    // #[test]
-    // fn get_all_children() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-    //     let guard = &epoch::pin();
-    //     // Insert Nodes
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(123)));
-    //     ops.push(OpType::Insert(2, Some(456)));
-    //     ops.push(OpType::Insert(3, Some(789)));
-    //     let insertions = adjlist.txn(ops).wait();
-
-    //     // Insert Edge
-    //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2), ReturnCode::Inserted(v3)) =
-    //         (&insertions[0], &insertions[1], &insertions[2])
-    //     {
-    //         let mut ops = Vec::new();
-    //         ops.push(OpType::Connect(*v1, 2, Some(EdgeInfo::new(*v2))));
-    //         ops.push(OpType::Connect(*v1, 3, Some(EdgeInfo::new(*v3))));
-    //         adjlist.txn(ops).wait();
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Find(1));
-    //     let res = adjlist.txn(ops).wait();
-
-    //     if let ReturnCode::Found(v) = &res[0] {
-    //         unsafe {
-    //             let vertex_ref = v.as_ref().unwrap();
-    //             let children = vertex_ref.list.as_ref().unwrap().entries(guard);
-
-    //             assert_eq!(children.len(), 2);
-    //         }
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-    // }
-
-    // #[test]
-    // fn delete_child_updates_node_links() {
-    //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
-    //     let guard = &epoch::pin();
-    //     // Insert Nodes
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Insert(1, Some(1)));
-    //     ops.push(OpType::Insert(2, Some(2)));
-    //     ops.push(OpType::Insert(3, Some(3)));
-    //     ops.push(OpType::Insert(4, Some(4)));
-    //     let insertions = adjlist.txn(ops).wait();
-
-    //     // Insert Edge
-    //     if let (
-    //         ReturnCode::Inserted(v1),
-    //         ReturnCode::Inserted(v2),
-    //         ReturnCode::Inserted(v3),
-    //         ReturnCode::Inserted(v4),
-    //     ) = (
-    //         &insertions[0],
-    //         &insertions[1],
-    //         &insertions[2],
-    //         &insertions[3],
-    //     ) {
-    //         let mut ops = Vec::new();
-    //         ops.push(OpType::Connect(*v1, 2, Some(EdgeInfo::new(*v2))));
-    //         ops.push(OpType::Connect(*v1, 3, Some(EdgeInfo::new(*v3))));
-    //         ops.push(OpType::Connect(*v1, 4, Some(EdgeInfo::new(*v4))));
-
-    //         adjlist.txn(ops).wait();
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-
-    //     let mut ops = Vec::new();
-    //     ops.push(OpType::Find(1));
-    //     ops.push(OpType::DeleteEdge(1, 3));
-    //     let res = adjlist.txn(ops).wait();
-
-    //     // Check that 2 and 4 is still found...
-    //     if let ReturnCode::Found(v) = &res[0] {
-    //         unsafe {
-    //             let vertex_ref = v.as_ref().unwrap();
-    //             let children = vertex_ref.list.as_ref().unwrap().entries(guard);
-
-    //             assert_eq!(children.len(), 2);
-    //         }
-    //     } else {
-    //         panic!("Node not found");
-    //     }
-    // }
-
-    //     #[test]
-    //     fn insert_edge_at_vertex() {
-    //         let adjlist = AdjacencyList::new(1, 1);
-
-    //         let desc = Atomic::new(Desc::new(vec![
-    //             Operator {
-    //                 optype: OpType::Insert(1, Some("abc")),
-    //                 retval: None,
-    //             },
-    //             Operator {
-    //                 optype: OpType::Insert(2, Some("abc")),
-    //                 retval: None,
-    //             },
-    //         ]));
-    //         assert_eq!(adjlist.execute_ops(&desc), true);
-
-    //         let desc = Atomic::new(Desc::new(vec![Operator {
-    //             optype: OpType::InsertEdge(1, 2),
-    //             retval: None,
-    //         }]));
-    //         assert_eq!(adjlist.execute_ops(&desc), true);
-    //     }
-
-    //     #[test]
-    //     fn insert_edge_at_non_existing_vertex_is_err() {
-    //         let adjlist = AdjacencyList::<u64>::new(1, 1);
-
-    //         let desc = Atomic::new(Desc::new(vec![Operator {
-    //             optype: OpType::InsertEdge(1, 2),
-    //             retval: None,
-    //         }]));
-    //         assert_eq!(adjlist.execute_ops(&desc), false);
-    //     }
-
-    //     #[test]
-    //     fn insert_existing_vertex_as_edge() {
-    //         let adjlist = AdjacencyList::new(1, 1);
-
-    //         let desc = Atomic::new(Desc::new(vec![
-    //             Operator {
-    //                 optype: OpType::Insert(1, Some("abc")),
-    //                 retval: None,
-    //             },
-    //             Operator {
-    //                 optype: OpType::Insert(2, Some("abc")),
-    //                 retval: None,
-    //             },
-    //         ]));
-    //         assert_eq!(adjlist.execute_ops(&desc), true);
-
-    //         let desc = Atomic::new(Desc::new(vec![Operator {
-    //             optype: OpType::InsertEdge(1, 2),
-    //             retval: None,
-    //         }]));
-    //         assert_eq!(adjlist.execute_ops(&desc), true);
-    //     }
-
-    //     #[test]
-    //     fn insert_same_edge_twice() {
-    //         let adjlist = AdjacencyList::new(1, 1);
-
-    //         let desc = Atomic::new(Desc::new(vec![
-    //             Operator {
-    //                 optype: OpType::Insert(1, Some("abc")),
-    //                 retval: None,
-    //             },
-    //             Operator {
-    //                 optype: OpType::Insert(2, Some("abc")),
-    //                 retval: None,
-    //             },
-    //         ]));
-    //         assert_eq!(adjlist.execute_ops(&desc), true);
-
-    //         let desc = Atomic::new(Desc::new(vec![Operator {
-    //             optype: OpType::InsertEdge(1, 2),
-    //             retval: None,
-    //         }]));
-    //         assert_eq!(adjlist.execute_ops(&desc), true);
-
-    //         let desc = Atomic::new(Desc::new(vec![Operator {
-    //             optype: OpType::InsertEdge(1, 2),
-    //             retval: None,
-    //         }]));
-    //         assert_eq!(adjlist.execute_ops(&desc), false);
-    //     }
-
-    //     #[test]
-    //     fn referenced_edge_is_updated_on_vertex_update() {
-    //         let guard = &epoch::pin();
-    //         let adjlist = AdjacencyList::new(1, 1);
-
-    //         let desc = Atomic::new(Desc::new(vec![
-    //             Operator {
-    //                 optype: OpType::Insert(1, Some("Root Node")),
-    //                 retval: None,
-    //             },
-    //             Operator {
-    //                 optype: OpType::Insert(2, Some("Edge Node")),
-    //                 retval: None,
-    //             },
-    //         ]));
-    //         assert_eq!(adjlist.execute_ops(&desc), true);
-
-    //         let desc = Atomic::new(Desc::new(vec![Operator {
-    //             optype: OpType::InsertEdge(1, 2),
-    //             retval: None,
-    //         }]));
-    //         assert_eq!(adjlist.execute_ops(&desc), true);
-
-    //         let desc = Atomic::new(Desc::new(vec![Operator {
-    //             optype: OpType::Insert(2, Some("Updated Edge Node")),
-    //             retval: None,
-    //         }]));
-    //         assert_eq!(adjlist.execute_ops(&desc), true);
-
-    //         let find = Atomic::new(Desc::new(vec![Operator {
-    //             optype: OpType::Find(1),
-    //             retval: None,
-    //         }]));
-    //         assert_eq!(adjlist.execute_ops(&find), true);
-
-    //         let mut reached = false;
-    //         unsafe {
-    //             for op in &find.load(SeqCst, guard).deref().ops {
-    //                 if let Some(ReturnCode::Found(ref vertex)) = op.retval {
-    //                     reached = true;
-    //                     assert_eq!(
-    //                         vertex
-    //                             .deref()
-    //                             .list
-    //                             .as_ref()
-    //                             .unwrap()
-    //                             .get(2, guard)
-    //                             .unwrap()
-    //                             .value(),
-    //                         Some("Updated Edge Node")
-    //                     );
-    //                 }
-    //             }
-    //         }
-    //         assert!(reached);
-    //     }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+
+//     type NodeData = u64;
+
+//     #[derive(Clone)]
+//     struct EdgeInfo<'a, T> {
+//         pub vertex_ref: &'a Node<'a, T, Self>,
+//     }
+
+//     impl<'a, T> EdgeInfo<'a, T> {
+//         pub fn new(vertex_ref: Shared<'a, Node<T, Self>>) -> Self {
+//             unsafe {
+//                 EdgeInfo {
+//                     vertex_ref: vertex_ref.as_ref().unwrap(),
+//                 }
+//             }
+//         }
+//     }
+
+//     #[test]
+//     fn insertion() {
+//         let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(5);
+
+//         let tx = adjlist.txn(vec![
+//             OpType::Insert(1, Some(123)),
+//             OpType::Insert(2, Some(123)),
+//             OpType::Insert(3, Some(123)),
+//             OpType::Insert(4, Some(123)),
+//             OpType::Insert(5, Some(123)),
+//         ]);
+//         let rx = tx.execute();
+
+//         let mut n_ok = 0;
+//         while let Ok(ReturnCode::Inserted(_)) = rx.recv() {
+//             n_ok += 1;
+//         }
+
+//         assert_eq!(n_ok, 5);
+//     }
+
+//     #[test]
+//     fn insert_and_find() {
+//         let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(5);
+
+//         let tx = adjlist.txn(vec![OpType::Insert(1, Some(123))]);
+//         tx.execute().recv().unwrap();
+
+//         let tx = adjlist.txn(vec![OpType::Find(1)]);
+//         let rx = tx.execute();
+
+//         if let Ok(ReturnCode::Found(entry)) = rx.recv() {
+//             assert_eq!(entry.get().value.load(), Some(123));
+//         }
+//     }
+
+//     #[test]
+//     fn edge_to_self() {
+//         let guard = &epoch::pin();
+//         let adjlist = AdjacencyList::<u64, u64>::new(5);
+
+//         let ops = Desc::alloc(vec![Operator {
+//             optype: OpType::Insert(1, Some(123)),
+//         }]);
+//         let (tx1, _rx1) = std::sync::mpsc::channel();
+//         adjlist.execute_ops(ops, tx1, guard);
+
+//         let ops2 = Desc::alloc(vec![Operator {
+//             optype: OpType::Insert(1, Some(123)),
+//         }]);
+//         let (tx2, _) = std::sync::mpsc::channel();
+//         adjlist.execute_ops(ops2, tx2, guard);
+//     }
+
+//     #[test]
+//     fn find_vertex() {
+//         let guard = &epoch::pin();
+//         let adjlist = AdjacencyList::<u64, u64>::new(5);
+//         // let empty_desc =
+
+//         let ops = Desc::alloc(vec![
+//             Operator {
+//                 optype: OpType::Insert(1, Some(1)),
+//             },
+//             Operator {
+//                 optype: OpType::Insert(2, Some(2)),
+//             },
+//             Operator {
+//                 optype: OpType::Insert(3, Some(3)),
+//             },
+//         ]);
+//         let (tx1, _) = std::sync::mpsc::channel();
+//         adjlist.execute_ops(ops, tx1, guard);
+
+//         unsafe {
+//             if let ReturnCode::Found(e) = adjlist.find(1, &Desc::empty(), 0, guard) {
+//                 assert_eq!(e.node.as_ref().unwrap().value.load(), Some(1));
+//             }
+//         }
+
+//         unsafe {
+//             if let ReturnCode::Found(e) = adjlist.find(2, &Desc::empty(), 0, guard) {
+//                 assert_eq!(e.node.as_ref().unwrap().value.load(), Some(2));
+//             }
+//         }
+
+//         unsafe {
+//             if let ReturnCode::Found(e) = adjlist.find(3, &Desc::empty(), 0, guard) {
+//                 assert_eq!(e.node.as_ref().unwrap().value.load(), Some(3));
+//             }
+//         }
+//     }
+
+//     #[test]
+//     fn cycle_insertion() {
+//         let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(5);
+//         let guard = &epoch::pin();
+
+//         let ops = Desc::alloc(vec![
+//             Operator {
+//                 optype: OpType::Insert(1, Some(1)),
+//             },
+//             Operator {
+//                 optype: OpType::Insert(2, Some(2)),
+//             },
+//         ]);
+//         let (tx, rx) = std::sync::mpsc::channel();
+//         adjlist.execute_ops(ops, tx, guard);
+
+//         if let (ReturnCode::Inserted(e1), ReturnCode::Inserted(e2)) =
+//             (rx.recv().unwrap(), rx.recv().unwrap())
+//         {
+//             unsafe {
+//                 AdjacencyList::connect(&e1, 2, EdgeInfo::new(e2.node));
+//                 AdjacencyList::connect(&e2, 1, EdgeInfo::new(e1.node));
+//             }
+//         }
+//     }
+
+//     #[test]
+//     fn find_non_existing_is_err() {
+//         let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(5);
+//         let find_txn = adjlist.txn(vec![OpType::Find(2)]);
+//         let res = find_txn.execute();
+//         let mut failed = false;
+//         if let Ok(ReturnCode::Fail(_)) = res.recv() {
+//             failed = true;
+//         }
+//         assert_eq!(failed, true);
+//     }
+
+//     #[test]
+//     fn large_insertion() {
+//         let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1000);
+
+//         let mut ops = Vec::new();
+//         for i in 1..1000 {
+//             ops.push(OpType::Insert(i, Some(123)))
+//         }
+//         adjlist.txn(ops).execute().recv().unwrap();
+
+//         let mut ops = Vec::new();
+//         for i in 1..1000 {
+//             ops.push(OpType::Find(i))
+//         }
+//         let find_txn = adjlist.txn(ops);
+//         let res = find_txn.execute();
+
+//         let mut found_count = 0;
+//         while let Ok(ReturnCode::Found(_)) = res.recv() {
+//             found_count += 1;
+//         }
+//         assert_eq!(found_count, 1000 - 1);
+//     }
+
+//     // #[test]
+//     // fn connect() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(123)));
+//     //     ops.push(OpType::Insert(2, Some(123)));
+//     //     let txn = adjlist.txn(ops).wait();
+
+//     //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2)) = (&txn[0], &txn[1]) {
+//     //         // OK
+//     //         let mut ops = Vec::new();
+//     //         ops.push(OpType::Connect(*v1, 2, Some(EdgeInfo::new(*v2))));
+//     //         adjlist.txn(ops).wait();
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+//     // }
+
+//     // #[test]
+//     // fn insert_then_delete_then_find_vertex() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(123)));
+//     //     adjlist.txn(ops).wait();
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Delete(1));
+//     //     adjlist.txn(ops).wait();
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Find(1));
+//     //     let res = adjlist.txn(ops).wait();
+
+//     //     match res[0] {
+//     //         ReturnCode::Fail => {}
+//     //         _ => panic!("Node was found"),
+//     //     }
+//     // }
+
+//     // #[test]
+//     // fn held_reference_is_valid_after_delete() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(123)));
+//     //     let ret = adjlist.txn(ops).wait();
+
+//     //     let reference = match ret[0] {
+//     //         ReturnCode::Inserted(e) => Some(*e),
+//     //         _ => None,
+//     //     }
+//     //     .and_then(|r| unsafe { r.as_ref() })
+//     //     .unwrap();
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Delete(1));
+//     //     adjlist.txn(ops).wait();
+
+//     //     assert_eq!(reference.value(), Some(123));
+//     // }
+
+//     // #[test]
+//     // fn held_reference_is_not_changed_after_reinsertion() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(123)));
+//     //     let ret = adjlist.txn(ops).wait();
+
+//     //     let reference = match ret[0] {
+//     //         ReturnCode::Inserted(e) => Some(*e),
+//     //         _ => None,
+//     //     }
+//     //     .and_then(|r| unsafe { r.as_ref() })
+//     //     .unwrap();
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Delete(1));
+//     //     adjlist.txn(ops).wait();
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(345)));
+//     //     adjlist.txn(ops).wait();
+
+//     //     assert_eq!(reference.value(), Some(123));
+//     // }
+
+//     // #[test]
+//     // fn held_reference_is_changed_after_update() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(123)));
+//     //     let ret = adjlist.txn(ops).wait();
+
+//     //     let reference = match ret[0] {
+//     //         ReturnCode::Inserted(e) => Some(*e),
+//     //         _ => None,
+//     //     }
+//     //     .and_then(|r| unsafe { r.as_ref() })
+//     //     .unwrap();
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(345)));
+//     //     adjlist.txn(ops).wait();
+
+//     //     assert_eq!(reference.value(), Some(345));
+//     // }
+
+//     // #[test]
+//     // fn delete_edge_created_with_insert_edge() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+//     //     let guard = &epoch::pin();
+//     //     // Insert Nodes
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(123)));
+//     //     ops.push(OpType::Insert(2, Some(123)));
+//     //     let insertions = adjlist.txn(ops).wait();
+
+//     //     // Insert Edge
+//     //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2)) =
+//     //         (&insertions[0], &insertions[1])
+//     //     {
+//     //         // OK
+//     //         let mut ops = Vec::new();
+//     //         ops.push(OpType::InsertEdge(1, 2, Some(EdgeInfo::new(*v2))));
+//     //         adjlist.txn(ops).wait();
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+
+//     //     // Delete edge
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::DeleteEdge(1, 2));
+//     //     let deletions = adjlist.txn(ops).wait();
+//     //     if let ReturnCode::Success = &deletions[0] {
+//     //     } else {
+//     //         panic!("Could not delete edge");
+//     //     }
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Find(1));
+//     //     let res = adjlist.txn(ops).wait();
+
+//     //     if let ReturnCode::Found(v) = &res[0] {
+//     //         unsafe {
+//     //             let vertex_ref = v.as_ref().unwrap();
+//     //             assert_eq!(
+//     //                 vertex_ref.list.as_ref().unwrap().get(2, guard).is_err(),
+//     //                 true
+//     //             )
+//     //         }
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+//     // }
+
+//     // #[test]
+//     // fn deleted_edge_is_not_found() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+//     //     let guard = &epoch::pin();
+//     //     // Insert Nodes
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(123)));
+//     //     ops.push(OpType::Insert(2, Some(123)));
+//     //     let insertions = adjlist.txn(ops).wait();
+
+//     //     // Insert Edge
+//     //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2)) =
+//     //         (&insertions[0], &insertions[1])
+//     //     {
+//     //         // OK
+//     //         let mut ops = Vec::new();
+//     //         ops.push(OpType::InsertEdge(1, 2, Some(EdgeInfo::new(*v2))));
+//     //         adjlist.txn(ops).wait();
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+
+//     //     // Delete edge
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::DeleteEdge(1, 2));
+//     //     adjlist.txn(ops).wait();
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Find(1));
+//     //     let res = adjlist.txn(ops).wait();
+
+//     //     if let ReturnCode::Found(v) = &res[0] {
+//     //         unsafe {
+//     //             let vertex_ref = v.as_ref().unwrap();
+//     //             let child = vertex_ref.list.as_ref().unwrap().get(2, guard);
+//     //             assert_eq!(child.is_err(), true);
+//     //         }
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+//     // }
+
+//     // #[test]
+//     // fn get_child_info() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+//     //     let guard = &epoch::pin();
+//     //     // Insert Nodes
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(123)));
+//     //     ops.push(OpType::Insert(2, Some(456)));
+//     //     let insertions = adjlist.txn(ops).wait();
+
+//     //     // Insert Edge
+//     //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2)) =
+//     //         (&insertions[0], &insertions[1])
+//     //     {
+//     //         let mut ops = Vec::new();
+//     //         ops.push(OpType::Connect(*v1, 2, Some(EdgeInfo::new(*v2))));
+//     //         adjlist.txn(ops).wait();
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Find(1));
+//     //     let res = adjlist.txn(ops).wait();
+
+//     //     if let ReturnCode::Found(v) = &res[0] {
+//     //         unsafe {
+//     //             let vertex_ref = v.as_ref().unwrap();
+//     //             let child = vertex_ref.list.as_ref().unwrap().get(2, guard).unwrap();
+//     //             assert_eq!(
+//     //                 child.value().unwrap().vertex_ref.as_ref().unwrap().value(),
+//     //                 Some(456)
+//     //             )
+//     //         }
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+//     // }
+
+//     // #[test]
+//     // fn get_all_children() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+//     //     let guard = &epoch::pin();
+//     //     // Insert Nodes
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(123)));
+//     //     ops.push(OpType::Insert(2, Some(456)));
+//     //     ops.push(OpType::Insert(3, Some(789)));
+//     //     let insertions = adjlist.txn(ops).wait();
+
+//     //     // Insert Edge
+//     //     if let (ReturnCode::Inserted(v1), ReturnCode::Inserted(v2), ReturnCode::Inserted(v3)) =
+//     //         (&insertions[0], &insertions[1], &insertions[2])
+//     //     {
+//     //         let mut ops = Vec::new();
+//     //         ops.push(OpType::Connect(*v1, 2, Some(EdgeInfo::new(*v2))));
+//     //         ops.push(OpType::Connect(*v1, 3, Some(EdgeInfo::new(*v3))));
+//     //         adjlist.txn(ops).wait();
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Find(1));
+//     //     let res = adjlist.txn(ops).wait();
+
+//     //     if let ReturnCode::Found(v) = &res[0] {
+//     //         unsafe {
+//     //             let vertex_ref = v.as_ref().unwrap();
+//     //             let children = vertex_ref.list.as_ref().unwrap().entries(guard);
+
+//     //             assert_eq!(children.len(), 2);
+//     //         }
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+//     // }
+
+//     // #[test]
+//     // fn delete_child_updates_node_links() {
+//     //     let adjlist = AdjacencyList::<NodeData, EdgeInfo<NodeData>>::new(1, 1);
+//     //     let guard = &epoch::pin();
+//     //     // Insert Nodes
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Insert(1, Some(1)));
+//     //     ops.push(OpType::Insert(2, Some(2)));
+//     //     ops.push(OpType::Insert(3, Some(3)));
+//     //     ops.push(OpType::Insert(4, Some(4)));
+//     //     let insertions = adjlist.txn(ops).wait();
+
+//     //     // Insert Edge
+//     //     if let (
+//     //         ReturnCode::Inserted(v1),
+//     //         ReturnCode::Inserted(v2),
+//     //         ReturnCode::Inserted(v3),
+//     //         ReturnCode::Inserted(v4),
+//     //     ) = (
+//     //         &insertions[0],
+//     //         &insertions[1],
+//     //         &insertions[2],
+//     //         &insertions[3],
+//     //     ) {
+//     //         let mut ops = Vec::new();
+//     //         ops.push(OpType::Connect(*v1, 2, Some(EdgeInfo::new(*v2))));
+//     //         ops.push(OpType::Connect(*v1, 3, Some(EdgeInfo::new(*v3))));
+//     //         ops.push(OpType::Connect(*v1, 4, Some(EdgeInfo::new(*v4))));
+
+//     //         adjlist.txn(ops).wait();
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+
+//     //     let mut ops = Vec::new();
+//     //     ops.push(OpType::Find(1));
+//     //     ops.push(OpType::DeleteEdge(1, 3));
+//     //     let res = adjlist.txn(ops).wait();
+
+//     //     // Check that 2 and 4 is still found...
+//     //     if let ReturnCode::Found(v) = &res[0] {
+//     //         unsafe {
+//     //             let vertex_ref = v.as_ref().unwrap();
+//     //             let children = vertex_ref.list.as_ref().unwrap().entries(guard);
+
+//     //             assert_eq!(children.len(), 2);
+//     //         }
+//     //     } else {
+//     //         panic!("Node not found");
+//     //     }
+//     // }
+
+//     //     #[test]
+//     //     fn insert_edge_at_vertex() {
+//     //         let adjlist = AdjacencyList::new(1, 1);
+
+//     //         let desc = Atomic::new(Desc::new(vec![
+//     //             Operator {
+//     //                 optype: OpType::Insert(1, Some("abc")),
+//     //                 retval: None,
+//     //             },
+//     //             Operator {
+//     //                 optype: OpType::Insert(2, Some("abc")),
+//     //                 retval: None,
+//     //             },
+//     //         ]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), true);
+
+//     //         let desc = Atomic::new(Desc::new(vec![Operator {
+//     //             optype: OpType::InsertEdge(1, 2),
+//     //             retval: None,
+//     //         }]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), true);
+//     //     }
+
+//     //     #[test]
+//     //     fn insert_edge_at_non_existing_vertex_is_err() {
+//     //         let adjlist = AdjacencyList::<u64>::new(1, 1);
+
+//     //         let desc = Atomic::new(Desc::new(vec![Operator {
+//     //             optype: OpType::InsertEdge(1, 2),
+//     //             retval: None,
+//     //         }]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), false);
+//     //     }
+
+//     //     #[test]
+//     //     fn insert_existing_vertex_as_edge() {
+//     //         let adjlist = AdjacencyList::new(1, 1);
+
+//     //         let desc = Atomic::new(Desc::new(vec![
+//     //             Operator {
+//     //                 optype: OpType::Insert(1, Some("abc")),
+//     //                 retval: None,
+//     //             },
+//     //             Operator {
+//     //                 optype: OpType::Insert(2, Some("abc")),
+//     //                 retval: None,
+//     //             },
+//     //         ]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), true);
+
+//     //         let desc = Atomic::new(Desc::new(vec![Operator {
+//     //             optype: OpType::InsertEdge(1, 2),
+//     //             retval: None,
+//     //         }]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), true);
+//     //     }
+
+//     //     #[test]
+//     //     fn insert_same_edge_twice() {
+//     //         let adjlist = AdjacencyList::new(1, 1);
+
+//     //         let desc = Atomic::new(Desc::new(vec![
+//     //             Operator {
+//     //                 optype: OpType::Insert(1, Some("abc")),
+//     //                 retval: None,
+//     //             },
+//     //             Operator {
+//     //                 optype: OpType::Insert(2, Some("abc")),
+//     //                 retval: None,
+//     //             },
+//     //         ]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), true);
+
+//     //         let desc = Atomic::new(Desc::new(vec![Operator {
+//     //             optype: OpType::InsertEdge(1, 2),
+//     //             retval: None,
+//     //         }]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), true);
+
+//     //         let desc = Atomic::new(Desc::new(vec![Operator {
+//     //             optype: OpType::InsertEdge(1, 2),
+//     //             retval: None,
+//     //         }]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), false);
+//     //     }
+
+//     //     #[test]
+//     //     fn referenced_edge_is_updated_on_vertex_update() {
+//     //         let guard = &epoch::pin();
+//     //         let adjlist = AdjacencyList::new(1, 1);
+
+//     //         let desc = Atomic::new(Desc::new(vec![
+//     //             Operator {
+//     //                 optype: OpType::Insert(1, Some("Root Node")),
+//     //                 retval: None,
+//     //             },
+//     //             Operator {
+//     //                 optype: OpType::Insert(2, Some("Edge Node")),
+//     //                 retval: None,
+//     //             },
+//     //         ]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), true);
+
+//     //         let desc = Atomic::new(Desc::new(vec![Operator {
+//     //             optype: OpType::InsertEdge(1, 2),
+//     //             retval: None,
+//     //         }]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), true);
+
+//     //         let desc = Atomic::new(Desc::new(vec![Operator {
+//     //             optype: OpType::Insert(2, Some("Updated Edge Node")),
+//     //             retval: None,
+//     //         }]));
+//     //         assert_eq!(adjlist.execute_ops(&desc), true);
+
+//     //         let find = Atomic::new(Desc::new(vec![Operator {
+//     //             optype: OpType::Find(1),
+//     //             retval: None,
+//     //         }]));
+//     //         assert_eq!(adjlist.execute_ops(&find), true);
+
+//     //         let mut reached = false;
+//     //         unsafe {
+//     //             for op in &find.load(SeqCst, guard).deref().ops {
+//     //                 if let Some(ReturnCode::Found(ref vertex)) = op.retval {
+//     //                     reached = true;
+//     //                     assert_eq!(
+//     //                         vertex
+//     //                             .deref()
+//     //                             .list
+//     //                             .as_ref()
+//     //                             .unwrap()
+//     //                             .get(2, guard)
+//     //                             .unwrap()
+//     //                             .value(),
+//     //                         Some("Updated Edge Node")
+//     //                     );
+//     //                 }
+//     //             }
+//     //         }
+//     //         assert!(reached);
+//     //     }
+// }

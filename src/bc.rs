@@ -37,6 +37,7 @@ use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSlice;
 use std::collections::HashSet;
+use crossbeam_utils::thread;
 
 type Score = f64;
 type Count = f64;
@@ -145,6 +146,76 @@ pub fn brandes<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
                 deltas[*u] = delta_u;
                 scores[*u] += delta_u;
             }
+        }
+    }
+
+    let mut biggest_score = 0.0;
+
+    for n in 0..graph.num_nodes() {
+        biggest_score = f64::max(biggest_score, scores[n]);
+    }
+
+    for n in 0..graph.num_nodes() {
+        scores[n] = scores[n] / biggest_score;
+    }
+
+    scores
+}
+
+
+pub fn brandes_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
+    graph: &G,
+    sp: &mut SourcePicker<'a, V, E, G>,
+    num_iters: NodeId,
+) -> Vec<Score> {
+    let mut scores = vec![0.0; graph.num_nodes()];
+    let mut path_counts = vec![0.0; graph.num_nodes()];
+    let mut succ = HashSet::new();
+    let mut depth_index: Vec<Vec<NodeId>> = Vec::new();
+    let mut queue = SlidingQueue::with_capacity(graph.num_nodes());
+
+    for n in 0..num_iters {
+        let source = sp.pick_next();
+        for e in path_counts.iter_mut() {
+            *e = 0.0;
+        }
+        depth_index.clear();
+        queue.reset();
+        succ.clear();
+
+        pbfs(
+            graph,
+            source,
+            &mut path_counts,
+            &mut succ,
+            &mut depth_index,
+            &mut queue,
+        );
+
+        let mut deltas = vec![0.0; graph.num_nodes()];
+
+        for d in (0..=depth_index.len() - 2).rev() {
+            let end_check = depth_index[d + 1].get(0);
+
+            for u in &depth_index[d] {
+                if let Some(other_start) = end_check {
+                    if u == other_start {
+                        break;
+                    }
+                }
+
+                let mut delta_u = 0.0;
+                for v in graph.out_neigh(*u) {
+                    let v = v.as_node();
+                    if succ.get(&(*u, v)).is_some() {
+                        delta_u += (path_counts[*u] / path_counts[v]) * (1.0 + deltas[v]);
+                    }
+                }
+
+                deltas[*u] = delta_u;
+                scores[*u] += delta_u;
+            }
+
         }
     }
 

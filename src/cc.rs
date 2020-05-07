@@ -48,11 +48,30 @@ fn link(u: NodeId, v: NodeId, comp: &mut Vec<NodeId>) {
     }
 }
 
-// FIXME: Make parallel
 fn compress<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, comp: &mut Vec<NodeId>) {
     (0..graph.num_nodes()).into_iter().for_each(|n| {
         while comp[n] != comp[comp[n]] {
             comp[n] = comp[comp[n]];
+        }
+    });
+}
+
+#[derive(Copy, Clone)]
+struct UnsafeBox(*mut usize);
+
+unsafe impl Send for UnsafeBox {}
+unsafe impl Sync for UnsafeBox {}
+
+fn compress_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(graph: &G, comp: &mut Vec<NodeId>) {
+    let ptr: UnsafeBox = UnsafeBox(comp.as_mut_ptr());
+    (0..graph.num_nodes()).into_par_iter().for_each(|n| {
+        // This unsafety makes me nervous
+        unsafe {
+            let first = ptr.0.wrapping_offset(n as isize);
+            let second = ptr.0.wrapping_offset(*first as isize);
+            while *first != *second {
+                *first = *second;
+            }
         }
     });
 }
@@ -130,6 +149,162 @@ pub fn afforest<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 
     // Finally, `compress` for final convergence
     compress(graph, &mut comp);
+    comp
+}
+
+pub fn afforest_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
+    graph: &G,
+    neighbor_rounds: Option<usize>,
+) -> Vec<NodeId> {
+    let neighbor_rounds = neighbor_rounds.unwrap_or(2);
+    // FIXME: Make parallel
+    let mut comp: Vec<NodeId> = (0..graph.num_nodes()).into_par_iter().collect();
+    let comp_ptr: UnsafeBox = UnsafeBox(comp.as_mut_ptr());
+
+    for r in 0..neighbor_rounds {
+        (0..graph.num_nodes()).into_par_iter().for_each(|u| {
+            for v in graph.out_neigh(u).skip(r) {
+                let mut p1 = comp_ptr.0.wrapping_offset(u as isize);
+                let mut p2 = comp_ptr.0.wrapping_offset(v.as_node() as isize);
+
+                while unsafe {*p1 != *p2} {
+                    let (high, low) = unsafe{if *p1 > *p2 { (*p1, *p2) } else { (*p2, *p1) }};
+
+                    let p_high = comp_ptr.0.wrapping_offset(high as isize);
+
+                    if unsafe{*p_high == low} {
+                        break;
+                    }
+
+                    if unsafe{(*p_high == high) && (*comp_ptr.0.wrapping_offset(high as isize)== high)} {
+                        // FIXME: They use atomic CAS here, but it should not be needed
+                        // for single-threaded execution.
+                        unsafe {
+                            *comp_ptr.0.wrapping_offset(high as isize) = low;
+                        }
+                        break;
+                    }
+
+                    unsafe {
+                        p1 = comp_ptr.0.wrapping_offset((*comp_ptr.0.wrapping_offset(high as isize)) as isize);
+                        p2 = comp_ptr.0.wrapping_offset(low as isize);
+                    }
+                }
+
+                break;
+            }
+        });
+        compress_mt(graph, &mut comp);
+    }
+
+    let c = sample_frequent_element(&comp, None);
+
+    if !graph.directed() {
+        (0..graph.num_nodes()).into_par_iter().for_each(|u| {
+            if unsafe{*comp_ptr.0.wrapping_offset(u as isize) != c} {
+                for v in graph.out_neigh(u).skip(neighbor_rounds) {
+                    let mut p1 = comp_ptr.0.wrapping_offset(u as isize);
+                    let mut p2 = comp_ptr.0.wrapping_offset(v.as_node() as isize);
+    
+                    while unsafe {*p1 != *p2} {
+                        let (high, low) = unsafe{if *p1 > *p2 { (*p1, *p2) } else { (*p2, *p1) }};
+    
+                        let p_high = comp_ptr.0.wrapping_offset(high as isize);
+    
+                        if unsafe{*p_high == low} {
+                            break;
+                        }
+    
+                        if unsafe{(*p_high == high) && (*comp_ptr.0.wrapping_offset(high as isize)== high)} {
+                            // FIXME: They use atomic CAS here, but it should not be needed
+                            // for single-threaded execution.
+                            unsafe {
+                                *comp_ptr.0.wrapping_offset(high as isize) = low;
+                            }
+                            break;
+                        }
+    
+                        unsafe {
+                            p1 = comp_ptr.0.wrapping_offset((*comp_ptr.0.wrapping_offset(high as isize)) as isize);
+                            p2 = comp_ptr.0.wrapping_offset(low as isize);
+                        }
+                    }
+
+                    break;
+                }
+            }
+        });
+    } else {
+        (0..graph.num_nodes()).into_par_iter().for_each(|u| {
+            if unsafe{*comp_ptr.0.wrapping_offset(u as isize) != c} {
+                for v in graph.out_neigh(u).skip(neighbor_rounds) {
+                    for v in graph.out_neigh(u).skip(neighbor_rounds) {
+                        let mut p1 = comp_ptr.0.wrapping_offset(u as isize);
+                        let mut p2 = comp_ptr.0.wrapping_offset(v.as_node() as isize);
+        
+                        while unsafe {*p1 != *p2} {
+                            let (high, low) = unsafe{if *p1 > *p2 { (*p1, *p2) } else { (*p2, *p1) }};
+        
+                            let p_high = comp_ptr.0.wrapping_offset(high as isize);
+        
+                            if unsafe{*p_high == low} {
+                                break;
+                            }
+        
+                            if unsafe{(*p_high == high) && (*comp_ptr.0.wrapping_offset(high as isize)== high)} {
+                                // FIXME: They use atomic CAS here, but it should not be needed
+                                // for single-threaded execution.
+                                unsafe {
+                                    *comp_ptr.0.wrapping_offset(high as isize) = low;
+                                }
+                                break;
+                            }
+        
+                            unsafe {
+                                p1 = comp_ptr.0.wrapping_offset((*comp_ptr.0.wrapping_offset(high as isize)) as isize);
+                                p2 = comp_ptr.0.wrapping_offset(low as isize);
+                            }
+                        }
+                    }
+                }
+    
+                for v in graph.in_neigh(u).skip(neighbor_rounds) {
+                    for v in graph.out_neigh(u).skip(neighbor_rounds) {
+                        let mut p1 = comp_ptr.0.wrapping_offset(u as isize);
+                        let mut p2 = comp_ptr.0.wrapping_offset(v.as_node() as isize);
+        
+                        while unsafe {*p1 != *p2} {
+                            let (high, low) = unsafe{if *p1 > *p2 { (*p1, *p2) } else { (*p2, *p1) }};
+
+                            let p_high = comp_ptr.0.wrapping_offset(high as isize);
+        
+                            if unsafe{*p_high == low} {
+                                break;
+                            }
+
+                            if unsafe{(*p_high == high) && (*comp_ptr.0.wrapping_offset(high as isize)== high)} {
+                                // FIXME: They use atomic CAS here, but it should not be needed
+                                // for single-threaded execution.
+                                unsafe {
+                                    *comp_ptr.0.wrapping_offset(high as isize) = low;
+                                }
+                                break;
+                            }
+        
+                            unsafe {
+                                p1 = comp_ptr.0.wrapping_offset((*comp_ptr.0.wrapping_offset(high as isize)) as isize);
+                                p2 = comp_ptr.0.wrapping_offset(low as isize);
+                            }
+                        }
+                    }
+                }
+            }
+
+        });
+    }
+
+    // Finally, `compress` for final convergence
+    compress_mt(graph, &mut comp);
     comp
 }
 
