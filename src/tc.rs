@@ -24,7 +24,7 @@ use crate::types::*;
 
 /// Has been manually verified,
 /// Only works on undirected, with sorted nodes
-fn ordered_count<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &G) -> usize {
+fn ordered_count<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usize {
     let mut total = 0;
     for u in 0..graph.num_nodes() {
         for v in graph.out_neigh(u) {
@@ -55,7 +55,7 @@ fn ordered_count<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &G) -> 
     total
 }
 
-fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &G, test_total: usize) -> bool {
+fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, test_total: usize) -> bool {
     let mut total = 0;
 
     for u in graph.vertices() {
@@ -76,12 +76,12 @@ fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &G, test_tot
     total == test_total
 }
 
-fn worth_relabelling<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &G) -> bool {
+fn worth_relabelling<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> bool {
     // FIXME: Implement this
     false
 }
 
-pub fn hybrid<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &G) {
+pub fn hybrid<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) {
     if worth_relabelling(graph) {
         unimplemented!("Relabeling is not supported");
     } else {

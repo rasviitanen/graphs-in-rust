@@ -99,7 +99,7 @@ pub struct Graph<T: Trace + 'static> {
     directed: bool,
 }
 
-impl<'a, T: Clone + Trace> CSRGraph<'a, Gc<GcCell<Node<T>>>, Gc<GcCell<Node<T>>>> for Graph<T> {
+impl<'a, T: Clone + Trace> CSRGraph<Gc<GcCell<Node<T>>>, Gc<GcCell<Node<T>>>> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let graph = Graph::new(true);
         for v in 0..num_nodes {

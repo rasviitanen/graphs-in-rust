@@ -49,7 +49,7 @@ fn link(u: NodeId, v: NodeId, comp: &mut Vec<NodeId>) {
 }
 
 // FIXME: Make parallel
-fn compress<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &G, comp: &mut Vec<NodeId>) {
+fn compress<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, comp: &mut Vec<NodeId>) {
     (0..graph.num_nodes()).into_iter().for_each(|n| {
         while comp[n] != comp[comp[n]] {
             comp[n] = comp[comp[n]];
@@ -81,7 +81,7 @@ fn sample_frequent_element(comp: &Vec<NodeId>, num_samples: Option<usize>) -> No
     *most_frequent.0
 }
 
-pub fn afforest<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
+pub fn afforest<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
     neighbor_rounds: Option<usize>,
 ) -> Vec<NodeId> {
@@ -133,7 +133,7 @@ pub fn afforest<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
     comp
 }
 
-fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
+fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
     comp: &Vec<NodeId>,
 ) -> bool {

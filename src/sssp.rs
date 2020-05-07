@@ -39,7 +39,7 @@ use std::collections::HashSet;
 const K_DIST_INF: Weight = std::usize::MAX / 2;
 const K_MAX_BIN: usize = std::usize::MAX / 2;
 
-pub fn delta_step<'a, V: AsNode, E: WeightedEdge + AsNode, G: CSRGraph<'a, V, E>>(
+pub fn delta_step<'a, V: AsNode, E: WeightedEdge + AsNode, G: CSRGraph<V, E>>(
     graph: &G,
     source: NodeId,
     delta: Weight,

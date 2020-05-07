@@ -57,7 +57,7 @@ impl BuilderBase {
         degrees.drain(..).map(|d| d.into_inner()).collect()
     }
 
-    pub fn make_graph_from_edge_list<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
+    pub fn make_graph_from_edge_list<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
         &mut self,
         edge_list: &mut EdgeList,
     ) -> G {
@@ -87,7 +87,7 @@ impl BuilderBase {
         graph
     }
 
-    fn squish_csr<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &mut G, transpose: bool) {
+    fn squish_csr<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &mut G, transpose: bool) {
         for v in graph.vertices() {
             let mut neighs: Vec<_>;
             if transpose {
@@ -106,7 +106,7 @@ impl BuilderBase {
         }
     }
 
-    fn squish_graph<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(&self, graph: &mut G) {
+    fn squish_graph<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(&self, graph: &mut G) {
         Self::squish_csr(graph, false);
         if graph.directed() {
             if INVERT {
@@ -115,7 +115,7 @@ impl BuilderBase {
         }
     }
 
-    pub fn make_graph<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(&mut self) -> G {
+    pub fn make_graph<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(&mut self) -> G {
         let mut edge_list;
         let generator = Generator::new(SCALE, DEGREE);
         if FILE_NAME != "" {

@@ -13,7 +13,7 @@ const K_DAMP: f64 = 0.85;
 
 /// Has been manually verified,
 /// Only works on undirected, with sorted nodes
-pub fn page_rank_pull<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
+pub fn page_rank_pull<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
     max_iters: usize,
     epsilon: Option<f64>,
@@ -54,7 +54,7 @@ pub fn page_rank_pull<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
     scores
 }
 
-pub fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
+pub fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
     scores: &Vec<Score>,
     target_error: f64,

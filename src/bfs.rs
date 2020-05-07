@@ -38,7 +38,7 @@ pub enum VisitStatus {
     Positive(NodeId),
 }
 
-pub fn bu_step<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
+pub fn bu_step<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
     parent: &mut Vec<VisitStatus>,
     front: &mut BitVec,
@@ -64,7 +64,7 @@ pub fn bu_step<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
 }
 
 // FIXME: Make parallel
-pub fn td_step<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
+pub fn td_step<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
     parent: &mut Vec<VisitStatus>,
     queue: &mut SlidingQueue<NodeId>,
@@ -93,7 +93,7 @@ pub fn td_step<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
     scout_count
 }
 
-pub fn init_parent<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &G) -> Vec<VisitStatus> {
+pub fn init_parent<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> Vec<VisitStatus> {
     let mut parent = vec![VisitStatus::Negative(1); graph.num_nodes() * 10];
     // parent.extend(
     //     (0..graph.vertices().map(|n|
@@ -121,7 +121,7 @@ fn queue_to_bitmap(queue: &SlidingQueue<NodeId>, bm: &mut BitVec) {
     }
 }
 
-fn bitmap_to_queue<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
+fn bitmap_to_queue<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     graph: &G,
     bm: &BitVec,
     queue: &mut SlidingQueue<NodeId>,
@@ -134,7 +134,7 @@ fn bitmap_to_queue<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(
     queue.slide_window();
 }
 
-pub fn do_bfs<'a, V: AsNode, E: AsNode, G: CSRGraph<'a, V, E>>(graph: &G, source: NodeId) {
+pub fn do_bfs<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, source: NodeId) {
     const ALPHA: usize = 15;
     const BETA: usize = 18;
 

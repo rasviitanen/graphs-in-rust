@@ -52,7 +52,7 @@ pub struct Graph<T> {
     n_edges: Cell<usize>,
 }
 
-impl<'a, T: Clone> CSRGraph<'a, CustomIndex, CustomIndex> for Graph<T> {
+impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let graph = Graph::new(true);
         for v in 0..num_nodes {

@@ -109,7 +109,7 @@ pub struct Graph<T: 'static> {
     directed: bool,
 }
 
-impl<'a, T: Clone> CSRGraph<'a, WrappedNode<T>, WrappedNode<T>> for Graph<T> {
+impl<'a, T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let graph = Graph::new(true);
         for v in 0..num_nodes {

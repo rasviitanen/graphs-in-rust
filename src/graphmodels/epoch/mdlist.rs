@@ -72,31 +72,31 @@ const MASK: [usize; DIMENSION] = [
 /// An entry in the adjacency list.
 /// It is guaranteed to live as long as the Guard
 /// that is used to get the entry.
-pub struct Entry<'a: 'g, 'g, T: 'a, P> {
+pub struct Entry<'a: 't + 'g, 't, 'g, T: 'a, P> {
     pub node: &'g MDNode<'a, T, P>,
-    _parent: &'a MDList<'a, T, P>,
+    _parent: &'t MDList<'a, T, P>,
     _guard: &'g Guard,
 }
 
-impl<'a: 'g, 'g, T: 'a, P> Entry<'a, 'g, T, P> {
+impl<'a: 't + 'g, 't, 'g, T: 'a, P> Entry<'a, 't, 'g, T, P> {
     pub fn value(&self) -> Option<&T> {
         self.node.val.as_ref()
     }
 }
 
-pub struct Iter<'a: 'g, 'g, T: 'a, P: 'a> {
-    parent: &'a MDList<'a, T, P>,
-    head: Option<&'a MDNode<'a, T, P>>,
+pub struct Iter<'a: 't + 'g, 't, 'g, T: 'a, P: 'a> {
+    parent: &'t MDList<'a, T, P>,
+    head: Option<&'t MDNode<'a, T, P>>,
     guard: &'g Guard,
-    stack: Vec<&'a Atomic<MDNode<'a, T, P>>>,
+    stack: Vec<&'t Atomic<MDNode<'a, T, P>>>,
     dim: usize,
     pred_dim: usize,
 }
 
-impl<'a: 'g, 'g, T: 'a, P: 'a> Iterator for Iter<'a, 'g, T, P> {
-    type Item = Entry<'a, 'g, T, P>;
+impl<'a: 't + 'g, 't, 'g, T: 'a, P: 'a> Iterator for Iter<'a, 't, 'g, T, P> {
+    type Item = Entry<'a, 't, 'g, T, P>;
 
-    fn next(&mut self) -> Option<Entry<'a, 'g, T, P>> {
+    fn next(&mut self) -> Option<Entry<'a, 't, 'g, T, P>> {
         unsafe {
             let guard = &*(self.guard as *const _);
 
@@ -253,7 +253,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a, P: 'a> MDList<'a, T, P> {
         }
     }
 
-    pub fn iter(&'a self, guard: &'g Guard) -> Iter<'a, 'g, T, P> {
+    pub fn iter<'t>(&'t self, guard: &'g Guard) -> Iter<'a, 't, 'g, T, P> {
         Iter {
             parent: self,
             head: None,
@@ -268,11 +268,11 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a, P: 'a> MDList<'a, T, P> {
         &self.head
     }
 
-    pub unsafe fn get(
+    pub unsafe fn get<'t>(
         &'a self,
         key: usize,
         guard: &'g Guard,
-    ) -> Result<Entry<'a, 'g, T, P>, impl std::fmt::Debug> {
+    ) -> Result<Entry<'a, 't, 'g, T, P>, impl std::fmt::Debug> {
         // Rebind lifetime to self
         let guard = &*(guard as *const _);
 
@@ -302,7 +302,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a, P: 'a> MDList<'a, T, P> {
         }
     }
 
-    pub fn entries(&'a self, guard: &'g Guard) -> Vec<Entry<'a, 'g, T, P>> {
+    pub fn entries<'t>(&'a self, guard: &'g Guard) -> Vec<Entry<'a, 't, 'g, T, P>> {
         unsafe {
             let mut stack = Vec::new();
             stack.push(&self.head);
