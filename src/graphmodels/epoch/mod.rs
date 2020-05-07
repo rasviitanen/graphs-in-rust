@@ -347,7 +347,7 @@ impl<'a, V: Copy + Clone + Into<usize>> CSRGraph<CustomNode<V>, EdgeInfo> for Gr
                 .for_each(|e| {
                     picked_edges.push(e.value().unwrap().clone())
                 });
-
+            picked_edges.sort_by(|a, b| a.node_id.cmp(&b.node_id));
             Box::new(picked_edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -381,7 +381,7 @@ impl<'a, V: Copy + Clone + Into<usize>> CSRGraph<CustomNode<V>, EdgeInfo> for Gr
                 .for_each(|e| {
                     picked_edges.push(e.value().unwrap().clone())
                 });
-
+            picked_edges.sort_by(|a, b| a.node_id.cmp(&b.node_id));
             Box::new(picked_edges.into_iter())
         } else {
             panic!("Vertex not found");

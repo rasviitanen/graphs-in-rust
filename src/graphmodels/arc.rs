@@ -103,13 +103,15 @@ impl<T> Node<T> {
 
 pub struct Graph<T> {
     vertices: RwLock<HashMap<usize, WrappedNode<T>>>,
-    n_edges: Cell<usize>,
+    num_nodes: usize,
+    num_edges_directed: usize,
+    num_edges_undirected: usize,
     directed: bool,
 }
 
 impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
-        let graph = Graph::new(true);
+        let mut graph = Graph::new(true);
         for v in 0..num_nodes {
             graph.add_vertex(v, None);
         }
@@ -121,7 +123,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn build_undirected(num_nodes: usize, edge_list: &EdgeList) -> Self {
-        let graph = Graph::new(false);
+        let mut graph = Graph::new(false);
         println!("Building undirected, with {} nodes", num_nodes);
         for v in 0..num_nodes {
             graph.add_vertex(v, None);
@@ -142,15 +144,11 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn num_edges(&self) -> usize {
-        self.n_edges.get()
+        self.num_edges_undirected
     }
 
     fn num_edges_directed(&self) -> usize {
-        let mut sum = 0;
-        for v in self.vertices() {
-            sum += v.read().expect("Could not read").out_edges.len();
-        }
-        sum
+        self.num_edges_directed
     }
 
     fn out_degree(&self, v: NodeId) -> usize {
@@ -241,7 +239,9 @@ impl<T> Graph<T> {
     pub fn new(directed: bool) -> Self {
         Graph {
             vertices: RwLock::new(HashMap::new()),
-            n_edges: Cell::new(0),
+            num_nodes: 0,
+            num_edges_directed: 0,
+            num_edges_undirected: 0,
             directed,
         }
     }
@@ -264,41 +264,41 @@ impl<T> Graph<T> {
         new_node
     }
 
-    pub fn add_edge(&self, vertex: usize, edge: usize, weight: &Option<usize>, directed: bool) {
+    pub fn add_edge(&mut self, vertex: usize, edge: usize, weight: &Option<usize>, directed: bool) {
         if let (Some(vertex_node), Some(edge_node)) = (
             self.vertices.read().expect("Could not read").get(&vertex),
             self.vertices.read().expect("Could not read").get(&edge),
         ) {
             if !directed {
+                self.num_edges_undirected += 1;
                 Node::add_out_edge(&edge_node, &vertex_node, weight);
             } else {
+                self.num_edges_directed += 1;
                 Node::add_in_edge(&edge_node, &vertex_node, weight);
             }
 
-            if Node::add_out_edge(&vertex_node, &edge_node, weight) {
-                self.n_edges.update(|x| x + 1);
-            }
+            Node::add_out_edge(&vertex_node, &edge_node, weight);
         } else {
             panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
         }
     }
 
     pub fn connect(
-        &self,
+        &mut self,
         vertex_node: &Arc<RwLock<Node<T>>>,
         edge_node: &Arc<RwLock<Node<T>>>,
         weight: &Option<usize>,
         directed: bool,
     ) {
         if !directed {
+            self.num_edges_undirected += 1;
             Node::add_out_edge(&edge_node, &vertex_node, weight);
         } else {
+            self.num_edges_directed += 1;
             Node::add_in_edge(&edge_node, &vertex_node, weight);
         }
 
-        if Node::add_out_edge(&vertex_node, &edge_node, weight) {
-            self.n_edges.update(|x| x + 1);
-        }
+        Node::add_out_edge(&vertex_node, &edge_node, weight);
     }
 
     pub fn bfs(&self, start: usize, goal: Option<usize>) -> usize {
