@@ -57,14 +57,17 @@ fn ordered_count<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usiz
 
                 idx = 0;
             }
+
         }
     }
+
     total
 }
 
 fn ordered_count_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(graph: &G) -> usize {
-    let total = AtomicUsize::new(0);
-    (0..graph.num_nodes()).into_par_iter().for_each(|u| {
+    let total =
+    (0..graph.num_nodes()).into_par_iter().map(|u| {
+        let mut count = 0;
         for v in graph.out_neigh(u) {
             if v.as_node() > u {
                 break;
@@ -82,14 +85,17 @@ fn ordered_count_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(g
                 }
 
                 if w.as_node() == it[idx].as_node() {
-                    total.fetch_add(1, Ordering::Relaxed);
+                    // total.fetch_add(1, Ordering::Relaxed);
+                    count += 1;
                 }
 
                 idx = 0;
             }
         }
-    });
-    total.into_inner()
+        count
+    }).sum();
+
+    total
 }
 
 fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, test_total: usize) -> bool {

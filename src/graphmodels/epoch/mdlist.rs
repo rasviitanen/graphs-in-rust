@@ -4,6 +4,7 @@ use crate::graphmodels::epoch::lftt::NodeDesc;
 use epoch::{Atomic, Guard, Shared};
 
 use std::sync::atomic::Ordering::SeqCst;
+use std::collections::VecDeque;
 
 const F_ADP: usize = 0x1;
 const F_DEL: usize = 0x2;
@@ -86,11 +87,10 @@ impl<'a: 't + 'g, 't, 'g, T: 'a, P> Entry<'a, 't, 'g, T, P> {
 
 pub struct Iter<'a: 't + 'g, 't, 'g, T: 'a, P: 'a> {
     parent: &'t MDList<'a, T, P>,
-    head: Option<&'t MDNode<'a, T, P>>,
     guard: &'g Guard,
     stack: Vec<&'t Atomic<MDNode<'a, T, P>>>,
-    dim: usize,
-    pred_dim: usize,
+    current: Option<&'t MDNode<'a, T, P>>,
+    returned_prematurely: bool,
 }
 
 impl<'a: 't + 'g, 't, 'g, T: 'a, P: 'a> Iterator for Iter<'a, 't, 'g, T, P> {
@@ -99,72 +99,120 @@ impl<'a: 't + 'g, 't, 'g, T: 'a, P: 'a> Iterator for Iter<'a, 't, 'g, T, P> {
     fn next(&mut self) -> Option<Entry<'a, 't, 'g, T, P>> {
         unsafe {
             let guard = &*(self.guard as *const _);
-
-            if self.dim != 0 {
-                for d in self.dim..DIMENSION {
-                    let child = &self.head.unwrap().children[d];
-                    let loaded_child = child.load(SeqCst, self.guard);
-                    if is_delinv(loaded_child.tag()) != 0 {
-                        continue;
-                    }
-                    if let Some(child_ref) = loaded_child.as_ref() {
+            
+            if self.returned_prematurely {
+                self.returned_prematurely = false;
+                for d in 0..DIMENSION {
+                    let child = &self.current.unwrap().children[d];
+                    if !child.load(SeqCst, guard).is_null() {
                         self.stack.push(&child);
-                        if child_ref.val.is_some() {
-                            self.dim = d + 1;
-                            return Some(Entry {
-                                node: child_ref,
-                                _parent: self.parent,
-                                _guard: self.guard,
-                            });
-                        }
                     }
                 }
-                self.dim = 0;
             }
 
-            if self.head.is_none() {
-                self.stack.push(&self.parent.head);
-            }
-
+            // let mut entries = VecDeque::new();
             while let Some(node) = self.stack.pop().map(|n| n.load(SeqCst, guard)) {
                 if node.is_null() || is_delinv(node.tag()) != 0 {
                     continue;
                 }
 
                 let node = node.as_ref().unwrap();
+                self.current = Some(node);
 
                 // The root node might not be logically added,
                 // so if it has no value, we skip it
-                // if node.val.is_some() {
-                //     return Some(Entry {
-                //         node,
-                //         _parent: self.parent,
-                //         _guard: self.guard,
-                //     });
-                // }
+                if node.val.is_some() {
+                    self.returned_prematurely = true;
+                    return Some(Entry {
+                        node,
+                        _parent: self.parent,
+                        _guard: self.guard,
+                    });
+                }
 
                 for d in 0..DIMENSION {
                     let child = &node.children[d];
-                    let loaded_child = child.load(SeqCst, self.guard);
-                    if is_delinv(loaded_child.tag()) != 0 {
-                        continue;
-                    }
-                    if let Some(child_ref) = loaded_child.as_ref() {
+                    if !child.load(SeqCst, guard).is_null() {
                         self.stack.push(&child);
-                        if child_ref.val.is_some() {
-                            self.dim = d + 1;
-                            self.head = Some(node);
-                            return Some(Entry {
-                                node: child_ref,
-                                _parent: self.parent,
-                                _guard: self.guard,
-                            });
-                        }
                     }
                 }
             }
+
+            None
         }
-        None
+        // let mut next = None;
+        // unsafe {
+        //     let guard = &*(self.guard as *const _);
+
+        //     if self.head.is_none() {
+        //         self.stack.push(&self.parent.head);
+        //     }
+
+        //     // Continue to search this dimension
+        //     // if we are not done with it
+        //     if self.dim != 0 {
+        //         for d in self.dim..DIMENSION {
+        //             let child = &self.head.unwrap().children[d];
+        //             let loaded_child = child.load(SeqCst, self.guard);
+        //             if is_delinv(loaded_child.tag()) != 0 {
+        //                 continue;
+        //             }
+        //             if let Some(child_ref) = loaded_child.as_ref() {
+        //                 self.stack.push(&child);
+        //                 if child_ref.val.is_some() {
+        //                     self.dim = d + 1;
+        //                     return Some(Entry {
+        //                         node: child_ref,
+        //                         _parent: self.parent,
+        //                         _guard: self.guard,
+        //                     });
+        //                 }
+        //             }
+        //         }
+        //         self.dim = 0;
+        //     }
+
+
+        //     while let Some(node) = self.stack.pop().map(|n| n.load(SeqCst, guard)) {
+        //         if node.is_null() || is_delinv(node.tag()) != 0 {
+        //             continue;
+        //         }
+
+        //         let node = node.as_ref().unwrap();
+
+        //         // The root node might not be logically added,
+        //         // so if it has no value, we skip it
+        //         // if node.val.is_some() {
+        //         //     return Some(Entry {
+        //         //         node,
+        //         //         _parent: self.parent,
+        //         //         _guard: self.guard,
+        //         //     });
+        //         // }
+
+        //         for d in 0..DIMENSION {
+        //             let child = &node.children[d];
+        //             let loaded_child = child.load(SeqCst, self.guard);
+        //             if is_delinv(loaded_child.tag()) != 0 {
+        //                 continue;
+        //             }
+
+        //             if let Some(child_ref) = loaded_child.as_ref() {
+        //                 self.stack.push(&child);
+        //                 if child_ref.val.is_some() {
+        //                     self.dim = d + 1;
+        //                     self.head = Some(node);
+        //                     next = Some(Entry {
+        //                         node: child_ref,
+        //                         _parent: self.parent,
+        //                         _guard: self.guard,
+        //                     });
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
+        // None
 
         // let mut next = None;
         // match self.head {
@@ -254,13 +302,14 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a, P: 'a> MDList<'a, T, P> {
     }
 
     pub fn iter<'t>(&'t self, guard: &'g Guard) -> Iter<'a, 't, 'g, T, P> {
+        let mut stack = Vec::new();
+        stack.push(&self.head);
         Iter {
             parent: self,
-            head: None,
-            stack: Vec::new(),
+            stack,
             guard,
-            dim: 0,
-            pred_dim: 0,
+            current: None,
+            returned_prematurely: false,
         }
     }
 
@@ -516,10 +565,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a, P: 'a> MDList<'a, T, P> {
             let loaded_child = child.load(SeqCst, guard);
 
             if let Some(child_ref) = loaded_child.as_ref() {
-                dbg!("a");
                 stack.push(loaded_child);
                 if child_ref.val.is_some() {
-                    dbg!("FOUND");
                     return (d, Some(*curr));
                 }
             }

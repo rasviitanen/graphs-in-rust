@@ -60,7 +60,14 @@ fn main() {
     // );
 
     println!("Triangle Counting (TC) - Order invariant with possible relabelling");
-    source_picker.benchmark_kernel_tc();
+    // source_picker.benchmark_kernel_tc();
+
+    benchmark_kernel(
+        &graph,
+        Box::new(|g: &Graph| gapbs::tc::hybrid(g)),
+        Box::new(|| {}),
+        Box::new(|| {}),
+    );
 
     // println!("Connected Components (CC) - Afforest & Shiloach-Vishkin");
     // source_picker.benchmark_kernel_cc();
@@ -354,11 +361,12 @@ fn custom_criterion() -> Criterion {
 fn bench_tc(c: &mut Criterion) {
     let mut group = c.benchmark_group("TC");
     // bench_tc!("EPOCH", graphmodels::epoch, group);
-    bench_tc_mt!("EPOCH_mt", graphmodels::epoch, group);
     bench_tc!("ARC", graphmodels::arc, group);
     bench_tc_mt!("ARC_mt", graphmodels::arc, group);
     bench_tc!("RC", graphmodels::rc, group);
     bench_tc!("CC", graphmodels::cc, group);
     bench_tc!("GC", graphmodels::gc, group);
     bench_tc!("ARENA", graphmodels::arena, group);
+    bench_tc!("EPOCH", graphmodels::epoch, group);
+    bench_tc_mt!("EPOCH_mt", graphmodels::epoch, group);
 }
