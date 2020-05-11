@@ -18,7 +18,7 @@ use crate::graph::{CSRGraph, Range};
 use crate::types::*;
 
 #[derive(Copy, Clone, Debug)]
-enum Direction {
+pub enum Direction {
     In,
     Out,
     Both,
@@ -50,19 +50,10 @@ unsafe impl Sync for EdgeInfo {}
 #[derive(Copy, Clone, Debug)]
 pub struct EdgeInfo {
     // pub vertex_ref: RefEntry<'a, 'a, T, Self>,
-    direction: Direction,
-    node_id: NodeId,
-    weight: Option<Weight>,
+    pub direction: Direction,
+    pub node_id: NodeId,
+    pub weight: Option<Weight>,
 }
-
-// impl<'a, T> EdgeInfo<'a, T> {
-//     pub fn new(vertex_ref: RefEntry<'a, 'a, T, Self>) -> Self {
-//         EdgeInfo {
-//             vertex_ref,
-//             weight: None,
-//         }
-//     }
-// }
 
 impl WeightedEdge for EdgeInfo {
     fn get_weight(&self) -> usize {
@@ -155,6 +146,25 @@ impl<'a, T: 'a + Copy + Clone + Into<usize>> Graph<'a, T> {
         }
     }
 
+    pub fn connect_with_id<'t>(&self, v: usize, e: usize) {
+        let edge_info_ev = EdgeInfo {
+            direction: Direction::In,
+            node_id: v,
+            weight: None,
+        };
+
+        let edge_info_ve = EdgeInfo {
+            direction: Direction::Out,
+            node_id: e,
+            weight: None,
+        };
+
+        if let (Some(en), Some(vn)) = (self.cache.read().unwrap().get(&e), self.cache.read().unwrap().get(&v)) {
+            Self::connect(en, edge_info_ev);
+            Self::connect(vn, edge_info_ve);
+        }
+    }
+
     pub fn iter_vertices<'t, 'g>(&'a self, guard: &'g Guard) -> IterRefEntry<'a, 't, 'g, T, E> {
         self.inner.iter(guard)
     }
@@ -194,7 +204,7 @@ impl<'a, T: 'a + Copy + Clone + Into<usize>> Graph<'a, T> {
     }
 }
 
-impl<'a, V: Copy + Clone + Into<usize>> CSRGraph<CustomNode<V>, EdgeInfo> for Graph<'_, V> {
+impl<'a> CSRGraph<CustomNode<usize>, EdgeInfo> for Graph<'_, usize> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let mut graph = Graph::new(num_nodes as i64, true);
         let guard = unsafe{&*(&epoch::pin() as *const _)};
@@ -373,39 +383,6 @@ impl<'a, V: Copy + Clone + Into<usize>> CSRGraph<CustomNode<V>, EdgeInfo> for Gr
         } else {
             panic!("Vertex not found");
         }
-
-
-        // if v == 0 {
-        //     // Our datastructure cannot handle id 0
-        //     return Box::new(Vec::new().into_iter());
-        // }
-
-        // let guard = &epoch::pin();
-        // if let Some(found) = self.cache.read().unwrap().get(&v) { // self.find_vertex(v) {
-        //     let mut picked_edges = Vec::new();
-        //     let edges = found.list.as_ref().unwrap();
-        //     edges.iter(guard)
-        //         .filter(|e| {
-        //             if let Some(present_edge) = e.value() {
-        //                 match present_edge.direction {
-        //                     Direction::Out => {
-        //                         return true;
-        //                     },
-        //                     _ => {
-        //                         return false;
-        //                     }
-        //                 }
-        //             }
-        //             false
-        //         })
-        //         .for_each(|e| {
-        //             picked_edges.push(e.value().unwrap().clone())
-        //         });
-        //     picked_edges.sort_by(|a, b| a.node_id.cmp(&b.node_id));
-        //     Box::new(picked_edges.into_iter())
-        // } else {
-        //     panic!("Vertex not found");
-        // }
     }
 
     fn in_neigh(&self, v: NodeId) -> Range<E> {
@@ -414,15 +391,14 @@ impl<'a, V: Copy + Clone + Into<usize>> CSRGraph<CustomNode<V>, EdgeInfo> for Gr
             return Box::new(Vec::new().into_iter());
         }
 
-        let guard = &epoch::pin();
+        let guard = unsafe {&*(&epoch::pin() as *const _)};
         if let Some(found) = self.cache.read().unwrap().get(&v) { // self.find_vertex(v) {
-            let mut picked_edges = Vec::new();
             let edges = found.list.as_ref().unwrap();
-            edges.iter(guard)
-                .filter(|e| {
-                    if let Some(present_edge) = e.value() {
-                        match present_edge.direction {
-                            Direction::In => {
+            let picked_edges = edges.iter(guard)
+            .filter(|e| {
+                if let Some(present_edge) = e.value() {
+                    match present_edge.direction {
+                        Direction::In => {
                                 return true;
                             },
                             _ => {
@@ -432,11 +408,11 @@ impl<'a, V: Copy + Clone + Into<usize>> CSRGraph<CustomNode<V>, EdgeInfo> for Gr
                     }
                     false
                 })
-                .for_each(|e| {
-                    picked_edges.push(e.value().unwrap().clone())
+                .map(|e| {
+                    e.value().unwrap().clone()
                 });
-            picked_edges.sort_by(|a, b| a.node_id.cmp(&b.node_id));
-            Box::new(picked_edges.into_iter())
+            // picked_edges
+            Box::new(picked_edges)
         } else {
             panic!("Vertex not found");
         }
@@ -449,19 +425,20 @@ impl<'a, V: Copy + Clone + Into<usize>> CSRGraph<CustomNode<V>, EdgeInfo> for Gr
         println!("---------------------------");
     }
 
-    fn vertices(&self) -> Range<CustomNode<V>> {
+    fn vertices(&self) -> Range<CustomNode<usize>> {
         let guard = &epoch::pin();
         let mut vertices = Vec::new();
         let mut iter = self.inner.iter(guard);
         while let Some(v) = iter.next() {
             let vertex_node_id = v.get().key;
+            vertices.push(CustomNode(vertex_node_id));
         }
 
         Box::new(vertices.into_iter())
     }
 
     fn replace_out_edges(&self, v: NodeId, edges: Vec<E>) {
-        unimplemented!();
+        // unimplemented!();
 
         // if let Some(found) = self.get_vertex(v) {
         //     let mut new_edges = HashSet::new();
@@ -473,7 +450,7 @@ impl<'a, V: Copy + Clone + Into<usize>> CSRGraph<CustomNode<V>, EdgeInfo> for Gr
     }
 
     fn replace_in_edges(&self, v: NodeId, edges: Vec<E>) {
-        unimplemented!();
+        // unimplemented!();
 
         // if let Some(found) = self.get_vertex(v) {
         //     let mut new_edges = HashSet::new();

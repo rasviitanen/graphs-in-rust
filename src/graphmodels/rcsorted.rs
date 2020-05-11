@@ -120,7 +120,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
 
     fn build_undirected(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let graph = Graph::new(false);
-        println!("Building undirected, with {} nodes", num_nodes);
+        // println!("Building undirected, with {} nodes", num_nodes);
         for v in 0..num_nodes {
             graph.add_vertex(v, None);
         }

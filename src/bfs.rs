@@ -32,7 +32,7 @@ use rayon::slice::ParallelSlice;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum VisitStatus {
     Negative(NodeId),
     Positive(NodeId),
@@ -94,16 +94,7 @@ pub fn td_step<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 }
 
 pub fn init_parent<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> Vec<VisitStatus> {
-    let mut parent = vec![VisitStatus::Negative(1); graph.num_nodes() * 10];
-    // parent.extend(
-    //     (0..graph.vertices().map(|n|
-    //         if graph.out_degree(n.as_node()) != 0 {
-    //             VisitStatus::Negative(graph.out_degree(n))
-    //         } else {
-    //             VisitStatus::Negative(1)
-    //         }
-    //     )
-    // );
+    let mut parent = vec![VisitStatus::Negative(1); graph.num_nodes()];
     for v in graph.vertices() {
         if graph.out_degree(v.as_node()) != 0 {
             parent.insert(
@@ -126,7 +117,7 @@ fn bitmap_to_queue<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     bm: &BitVec,
     queue: &mut SlidingQueue<NodeId>,
 ) {
-    for n in 0..graph.num_nodes() * 10 {
+    for n in 0..graph.num_nodes() {
         if let Some(true) = bm.get(n) {
             queue.push_back(n);
         }
@@ -137,7 +128,6 @@ fn bitmap_to_queue<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
 pub fn do_bfs<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, source: NodeId) {
     const ALPHA: usize = 15;
     const BETA: usize = 18;
-
     // let timer = crate::timer::ScopedTimer::new("Init Parent");
     let mut parent = init_parent(graph);
     // drop(timer);
@@ -147,8 +137,8 @@ pub fn do_bfs<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, source: No
     queue.push_back(source);
     queue.slide_window();
 
-    let mut curr = BitVec::from_elem(graph.num_nodes() * 10, false);
-    let mut front = BitVec::from_elem(graph.num_nodes() * 10, false);
+    let mut curr = BitVec::from_elem(graph.num_nodes(), false);
+    let mut front = BitVec::from_elem(graph.num_nodes(), false);
 
     let mut edges_to_check = graph.num_edges_directed();
     let mut scout_count = graph.out_degree(source);
