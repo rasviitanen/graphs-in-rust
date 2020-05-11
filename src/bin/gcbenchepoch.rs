@@ -31,13 +31,11 @@ fn Populate<'a>(guard: &Guard, iDepth: i32, thisNode: Atomic<Node<'a, usize, Edg
         let right = graph.add_vertex(1, None).expect("B2").1;
 
         let edge_info_l = EdgeInfo {
-            direction: Direction::Out,
             node_id: 1,
             weight: None,
         };
 
         let edge_info_r = EdgeInfo {
-            direction: Direction::Out,
             node_id: 2,
             weight: None,
         };
@@ -72,13 +70,11 @@ fn MakeTree<'a>(guard: &Guard, iDepth: i32, graph: &'a Graph<'a, usize>) -> Atom
         // Graph::connect(&result, EdgeInfo::new(right.clone()));
 
         let edge_info_l = EdgeInfo {
-            direction: Direction::Out,
             node_id: 1,
             weight: None,
         };
 
         let edge_info_r = EdgeInfo {
-            direction: Direction::Out,
             node_id: 2,
             weight: None,
         };

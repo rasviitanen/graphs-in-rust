@@ -17,19 +17,13 @@ use std::sync::{Arc, RwLock};
 use crate::graph::{CSRGraph, Range};
 use crate::types::*;
 
-#[derive(Copy, Clone, Debug)]
-pub enum Direction {
-    In,
-    Out,
-    Both,
-}
-
 #[derive(Clone, Copy)]
-pub struct CustomNode<T: Copy + Clone + Into<usize>>(T);
+pub struct CustomNode(usize);
 
-impl<T: Copy + Clone + Into<usize>> AsNode for CustomNode<T> {
+impl AsNode for CustomNode {
+    #[inline]
     fn as_node(&self) -> NodeId {
-        self.0.into()
+        self.0
     }
 }
 
@@ -50,7 +44,6 @@ unsafe impl Sync for EdgeInfo {}
 #[derive(Copy, Clone, Debug)]
 pub struct EdgeInfo {
     // pub vertex_ref: RefEntry<'a, 'a, T, Self>,
-    pub direction: Direction,
     pub node_id: NodeId,
     pub weight: Option<Weight>,
 }
@@ -204,7 +197,7 @@ impl<'a, T: 'a + Copy + Clone + Into<usize>> Graph<'a, T> {
     }
 }
 
-impl<'a> CSRGraph<CustomNode<usize>, EdgeInfo> for Graph<'_, usize> {
+impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
         let mut graph = Graph::new(num_nodes as i64, true);
         let guard = unsafe{&*(&epoch::pin() as *const _)};
@@ -222,13 +215,11 @@ impl<'a> CSRGraph<CustomNode<usize>, EdgeInfo> for Graph<'_, usize> {
             }
 
             let edge_info_ev = EdgeInfo {
-                direction: Direction::In,
                 node_id: *v,
                 weight: w.as_ref().map(|x| *x),
             };
 
             let edge_info_ve = EdgeInfo {
-                direction: Direction::Out,
                 node_id: *e,
                 weight: w.as_ref().map(|x| *x),
             };
@@ -262,13 +253,11 @@ impl<'a> CSRGraph<CustomNode<usize>, EdgeInfo> for Graph<'_, usize> {
             }
 
             let edge_info_ev = EdgeInfo {
-                direction: Direction::Out,
                 node_id: *v,
                 weight: w.as_ref().map(|x| *x),
             };
 
             let edge_info_ve = EdgeInfo {
-                direction: Direction::Out,
                 node_id: *e,
                 weight: w.as_ref().map(|x| *x),
             };
@@ -400,16 +389,10 @@ impl<'a> CSRGraph<CustomNode<usize>, EdgeInfo> for Graph<'_, usize> {
         println!("---------------------------");
     }
 
-    fn vertices(&self) -> Range<CustomNode<usize>> {
-        let guard = &epoch::pin();
-        let mut vertices = Vec::new();
-        let mut iter = self.inner.iter(guard);
-        while let Some(v) = iter.next() {
-            let vertex_node_id = v.get().key;
-            vertices.push(CustomNode(vertex_node_id));
-        }
-
-        Box::new(vertices.into_iter())
+    fn vertices(&self) -> Range<CustomNode> {
+        let guard = unsafe{&*(&epoch::pin() as *const _)};
+        let iter = self.inner.iter(guard).map(|v| CustomNode(v.get().key));
+        Box::new(iter)
     }
 
     fn replace_out_edges(&self, v: NodeId, edges: Vec<E>) {
