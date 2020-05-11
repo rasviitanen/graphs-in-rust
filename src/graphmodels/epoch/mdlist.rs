@@ -3,6 +3,7 @@
 use crate::graphmodels::epoch::lftt::NodeDesc;
 use epoch::{Atomic, Guard, Shared};
 
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
 use std::collections::VecDeque;
 
@@ -290,6 +291,7 @@ impl<'a, T, P> MDNode<'a, T, P> {
 #[repr(C)]
 pub struct MDList<'a, T, P> {
     basis: usize,
+    len: AtomicUsize,
     head: Atomic<MDNode<'a, T, P>>,
 }
 
@@ -297,8 +299,13 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a, P: 'a> MDList<'a, T, P> {
     pub fn new(basis: usize) -> Self {
         Self {
             head: Atomic::new(MDNode::new(0, None)),
+            len: AtomicUsize::new(0),
             basis,
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len.load(SeqCst)
     }
 
     pub fn iter<'t>(&'t self, guard: &'g Guard) -> Iter<'a, 't, 'g, T, P> {
@@ -444,8 +451,11 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a, P: 'a> MDList<'a, T, P> {
                         desc.load(SeqCst, guard),
                         guard,
                     );
+
                 }
             }
+
+            self.len.fetch_add(1, SeqCst);
             return true;
         }
 

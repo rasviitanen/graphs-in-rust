@@ -19,13 +19,13 @@ pub type WEdgeList = Vec<WEdge>;
 
 // HAP BENCHMARK SOUT
 pub const NUM_TRIALS: usize = 1;
-pub const SYMMETRIZE: bool = true;
-pub const UNIFORM: bool = true;
+pub const SYMMETRIZE: bool = false;
+pub const UNIFORM: bool = false;
 pub const NEEDS_WEIGHTS: bool = true;
-pub const FILE_NAME: &'static str = "datasets/moreno_kangaroo.out"; // "datasets/dolphins.out"
+pub const FILE_NAME: &'static str = ""; // "datasets/dolphins.out"
 pub const INVERT: bool = false;
-pub const SCALE: usize = 7;
-pub const DEGREE: usize = 100;
+pub const SCALE: usize = 10;
+pub const DEGREE: usize = 4;
 
 
 // GC BENCH

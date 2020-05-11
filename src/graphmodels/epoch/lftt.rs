@@ -28,8 +28,8 @@ pub enum OpType<'a, T, E> {
     Insert(usize, Option<T>),
     Connect(&'a RefEntry<'a, 'a, T, E>, usize, E),
     Delete(usize),
-    InsertEdge(usize, usize, Option<E>),
-    DeleteEdge(usize, usize),
+    InsertEdge(usize, usize, Option<E>, bool),
+    DeleteEdge(usize, usize, bool),
 }
 
 pub struct Operator<'a, T, E> {

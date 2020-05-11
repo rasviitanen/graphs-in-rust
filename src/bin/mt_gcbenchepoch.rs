@@ -50,12 +50,14 @@ fn Populate<'a>(guard: &Guard, iDepth: i32, thisNode: Atomic<Node<'a, usize, Edg
         unsafe {
             Graph::connect(
                 thisNode.load(Ordering::SeqCst, guard).as_ref().unwrap(),
-                edge_info_l
+                edge_info_l,
+                false,
             );
 
             Graph::connect(
                 thisNode.load(Ordering::SeqCst, guard).as_ref().unwrap(),
-                edge_info_r
+                edge_info_r,
+                false,
             );
         }
 
@@ -89,12 +91,14 @@ fn MakeTree<'a>(guard: &Guard, iDepth: i32, graph: &'a Graph<'a, usize>) -> Atom
         unsafe {
             Graph::connect(
                 result.load(Ordering::SeqCst, guard).as_ref().unwrap(),
-                edge_info_l
+                edge_info_l,
+                false,
             );
 
             Graph::connect(
                 result.load(Ordering::SeqCst, guard).as_ref().unwrap(),
-                edge_info_r
+                edge_info_r,
+                false,
             );
         }
 

@@ -2,7 +2,7 @@ use crate::graph::{CSRGraph, Range};
 use crate::types::*;
 use bacon_rajan_cc::{Cc, Trace, Tracer, Weak};
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 
 #[derive(Clone)]
 pub struct WrappedNode<T: 'static> {
@@ -46,8 +46,8 @@ impl<T> WrappedNode<T> {
 pub struct Node<T: 'static> {
     node_id: NodeId,
     value: Option<T>,
-    in_edges: HashMap<usize, WrappedNode<T>>,
-    out_edges: HashMap<usize, WrappedNode<T>>,
+    in_edges: BTreeMap<usize, WrappedNode<T>>,
+    out_edges: BTreeMap<usize, WrappedNode<T>>,
 }
 
 impl<T> Trace for Node<T> {
@@ -59,8 +59,8 @@ impl<T> Node<T> {
         let node = Node {
             node_id,
             value,
-            in_edges: HashMap::new(),
-            out_edges: HashMap::new(),
+            in_edges: BTreeMap::new(),
+            out_edges: BTreeMap::new(),
         };
 
         Cc::new(RefCell::new(node))
@@ -104,7 +104,7 @@ impl<T> Node<T> {
 }
 
 pub struct Graph<T: 'static> {
-    vertices: RefCell<HashMap<usize, WrappedNode<T>>>,
+    vertices: RefCell<BTreeMap<usize, WrappedNode<T>>>,
     n_edges: Cell<usize>,
     directed: bool,
 }
@@ -178,7 +178,7 @@ impl<'a, T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             for edge in vertex.borrow().out_edges.values() {
                 edges.push(WrappedNode::clone(&edge));
             }
-            edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
+            
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -191,7 +191,7 @@ impl<'a, T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             for edge in vertex.borrow().in_edges.values() {
                 edges.push(WrappedNode::clone(&edge));
             }
-            edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
+            
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -210,13 +210,13 @@ impl<'a, T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         for edge in self.vertices.borrow().values() {
             edges.push(WrappedNode::clone(&edge));
         }
-        edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
+
         Box::new(edges.into_iter())
     }
 
     fn replace_out_edges(&self, v: NodeId, edges: Vec<WrappedNode<T>>) {
         if let Some(vertex) = self.vertices.borrow().get(&v) {
-            let mut new_edges = HashMap::new();
+            let mut new_edges = BTreeMap::new();
             for e in edges {
                 new_edges.insert(e.as_node(), e);
             }
@@ -226,7 +226,7 @@ impl<'a, T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
 
     fn replace_in_edges(&self, v: NodeId, edges: Vec<WrappedNode<T>>) {
         if let Some(vertex) = self.vertices.borrow().get(&v) {
-            let mut new_edges = HashMap::new();
+            let mut new_edges = BTreeMap::new();
             for e in edges {
                 new_edges.insert(e.as_node(), e);
             }
@@ -242,7 +242,7 @@ impl<'a, T: Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
 impl<T> Graph<T> {
     pub fn new(directed: bool) -> Self {
         Graph {
-            vertices: RefCell::new(HashMap::new()),
+            vertices: RefCell::new(BTreeMap::new()),
             n_edges: Cell::new(0),
             directed,
         }

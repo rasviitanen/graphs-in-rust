@@ -2,7 +2,7 @@ use crate::graph::{CSRGraph, Range};
 use crate::types::*;
 use generational_arena::{Arena, Index};
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 
 type Weight = usize;
 
@@ -131,7 +131,7 @@ impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
             for edge in &self.vertices.borrow().get(found.index).unwrap().out_edges {
                 edges.push(edge.clone());
             }
-            edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
+            
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -144,7 +144,7 @@ impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
             for edge in &self.vertices.borrow().get(found.index).unwrap().in_edges {
                 edges.push(edge.clone());
             }
-            edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
+            
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -166,7 +166,7 @@ impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
                 weight: None,
             });
         }
-        edges.sort_by(|a, b| a.as_node().cmp(&b.as_node()));
+        
         Box::new(edges.into_iter())
     }
 
