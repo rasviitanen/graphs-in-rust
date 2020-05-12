@@ -16,8 +16,8 @@ use gapbs::graphmodels;
 use gapbs::types::*;
 use gapbs::graph::CSRGraph;
 
-type Graph<'a> = graphmodels::epoch::Graph<'a, usize>;
-// type Graph = graphmodels::rc::Graph<usize>;
+// type Graph<'a> = graphmodels::epoch::Graph<'a, usize>;
+type Graph = graphmodels::arena::Graph<usize>;
 
 fn main() {
     println!(
@@ -77,19 +77,19 @@ fn main() {
     //     Box::new(|| {}),
     // );
 
-    println!("PageRank (PR) - iterative method in pull direction");
-    source_picker.benchmark_kernel_pr();
+    // println!("PageRank (PR) - iterative method in pull direction");
+    // source_picker.benchmark_kernel_pr();
 
-    // println!("Betweenness Centrality (BC) - Brandes");
-    // benchmark_kernel_with_sp(
-    //     &graph,
-    //     &mut source_picker3,
-    //     Box::new(|g: &Graph, mut sp| {
-    //         gapbs::bc::brandes(g, &mut sp, 1);
-    //     }),
-    //     Box::new(|| {}),
-    //     Box::new(|| {}),
-    // );
+    println!("Betweenness Centrality (BC) - Brandes");
+    benchmark_kernel_with_sp(
+        &graph,
+        &mut source_picker3,
+        Box::new(|g: &Graph, mut sp| {
+            gapbs::bc::brandes(g, &mut sp, 1);
+        }),
+        Box::new(|| {}),
+        Box::new(|| {}),
+    );
 }
 
 macro_rules! bench_bfs {
@@ -343,8 +343,8 @@ fn bench_sssp(c: &mut Criterion) {
     bench_sssp!("CC", graphmodels::cc, group);
     bench_sssp!("GC", graphmodels::gc, group);
     bench_sssp!("ARENA", graphmodels::arena, group);
-    bench_sssp!("EPOCH", graphmodels::epoch, group);
     // bench_sssp_mt!("EPOCH_mt", graphmodels::epoch, group);
+    bench_sssp!("EPOCH", graphmodels::epoch, group);
 }
 
 #[criterion(custom_criterion())]
@@ -378,13 +378,13 @@ fn bench_cc(c: &mut Criterion) {
 fn bench_bc(c: &mut Criterion) {
     let mut group = c.benchmark_group("BC");
     bench_bc!("ARC", graphmodels::arc, group);
-    // bench_bc_mt!("ARC_mt", graphmodels::arc, group);
+    bench_bc_mt!("ARC_mt", graphmodels::arc, group);
     bench_bc!("RC", graphmodels::rc, group);
     bench_bc!("CC", graphmodels::cc, group);
     bench_bc!("GC", graphmodels::gc, group);
     bench_bc!("ARENA", graphmodels::arena, group);
     bench_bc!("EPOCH", graphmodels::epoch, group);
-    // bench_bc_mt!("EPOCH_mt", graphmodels::epoch, group);
+    bench_bc_mt!("EPOCH_mt", graphmodels::epoch, group);
 }
 
 #[criterion(custom_criterion())]

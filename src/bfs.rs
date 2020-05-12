@@ -73,7 +73,7 @@ pub fn td_step<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     let mut new_queue = SlidingQueue::new();
 
     for u in &*queue {
-        graph.out_neigh(*u).into_iter().for_each(|v: E| {
+        graph.out_neigh(*u).for_each(|v: E| {
             if let VisitStatus::Negative(curr_val) = parent[v.as_node()] {
                 if curr_val != 0 {
                     parent.insert(v.as_node(), VisitStatus::Positive(*u));

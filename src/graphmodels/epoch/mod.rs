@@ -10,7 +10,7 @@ use std::sync::atomic::Ordering::{Relaxed, SeqCst};
 
 use epoch::{Atomic, Guard, Shared};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, RwLock};
 
@@ -78,7 +78,7 @@ impl AsNode for EdgeInfo {
 
 pub struct Graph<'a, T: Copy + Clone + Into<usize>> {
     inner: AdjacencyList<'a, T, EdgeInfo>,
-    cache: Arc<RwLock<HashMap<NodeId, &'a Node<'a, T, E>>>>,
+    cache: Arc<RwLock<BTreeMap<NodeId, &'a Node<'a, T, E>>>>,
     directed: bool,
     num_nodes: usize,
     num_edges_directed: usize,
@@ -91,7 +91,7 @@ impl<'a, T: 'a + Copy + Clone + Into<usize>> Graph<'a, T> {
     pub fn new(size_hint: i64, directed: bool) -> Self {
         Self {
             inner: AdjacencyList::new(size_hint),
-            cache: Arc::new(RwLock::new(HashMap::new())),
+            cache: Arc::new(RwLock::new(BTreeMap::new())),
             directed,
             num_nodes: 0,
             num_edges_directed: 0,
@@ -271,10 +271,12 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
         graph
     }
 
+    #[inline]
     fn directed(&self) -> bool {
         self.directed
     }
 
+    #[inline]
     fn num_nodes(&self) -> usize {
         self.num_nodes
     }
@@ -284,6 +286,7 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
         unimplemented!();
     }
 
+    #[inline]
     fn num_edges_directed(&self) -> usize {
         self.num_edges_directed
     }

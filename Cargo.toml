@@ -25,3 +25,6 @@ bacon_rajan_cc = "0.2"
 crossbeam-epoch = "0.8"
 crossbeam-utils = "0.7"
 lock_free_bloomfilter = { path = "../lock-free-bloomfilter" }
+
+[profile.release]
+debug = true

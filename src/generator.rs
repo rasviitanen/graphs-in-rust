@@ -142,7 +142,7 @@ impl Generator {
             let connection = (
                 line_parts[0].parse::<usize>().unwrap(),
                 line_parts[1].parse::<usize>().unwrap(),
-                line_parts.get(2).map(|x| x.parse::<usize>().unwrap()),
+                line_parts.get(2).and_then(|x| x.parse::<usize>().ok()),
             );
 
             edge_list.push(connection);
