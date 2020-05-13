@@ -28,7 +28,9 @@ fn Populate(iDepth: i32, thisNode: NodeModel::WrappedNode) {
     if iDepth <= 0 {
         return;
     } else {
-        thisNode.borrow_mut().set_edges(NodeModel::Node::new(), NodeModel::Node::new());
+        thisNode
+            .borrow_mut()
+            .set_edges(NodeModel::Node::new(), NodeModel::Node::new());
         Populate(iDepth - 1, thisNode.borrow().left().unwrap());
         Populate(iDepth - 1, thisNode.borrow().right().unwrap());
     }

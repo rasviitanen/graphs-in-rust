@@ -62,7 +62,10 @@ struct UnsafeBox(*mut usize);
 unsafe impl Send for UnsafeBox {}
 unsafe impl Sync for UnsafeBox {}
 
-fn compress_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(graph: &G, comp: &mut Vec<NodeId>) {
+fn compress_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
+    graph: &G,
+    comp: &mut Vec<NodeId>,
+) {
     let ptr: UnsafeBox = UnsafeBox(comp.as_mut_ptr());
     (0..graph.num_nodes()).into_par_iter().for_each(|n| {
         // This unsafety makes me nervous
@@ -167,16 +170,24 @@ pub fn afforest_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
                 let mut p1 = comp_ptr.0.wrapping_offset(u as isize);
                 let mut p2 = comp_ptr.0.wrapping_offset(v.as_node() as isize);
 
-                while unsafe {*p1 != *p2} {
-                    let (high, low) = unsafe{if *p1 > *p2 { (*p1, *p2) } else { (*p2, *p1) }};
+                while unsafe { *p1 != *p2 } {
+                    let (high, low) = unsafe {
+                        if *p1 > *p2 {
+                            (*p1, *p2)
+                        } else {
+                            (*p2, *p1)
+                        }
+                    };
 
                     let p_high = comp_ptr.0.wrapping_offset(high as isize);
 
-                    if unsafe{*p_high == low} {
+                    if unsafe { *p_high == low } {
                         break;
                     }
 
-                    if unsafe{(*p_high == high) && (*comp_ptr.0.wrapping_offset(high as isize)== high)} {
+                    if unsafe {
+                        (*p_high == high) && (*comp_ptr.0.wrapping_offset(high as isize) == high)
+                    } {
                         // FIXME: They use atomic CAS here, but it should not be needed
                         // for single-threaded execution.
                         unsafe {
@@ -186,7 +197,9 @@ pub fn afforest_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
                     }
 
                     unsafe {
-                        p1 = comp_ptr.0.wrapping_offset((*comp_ptr.0.wrapping_offset(high as isize)) as isize);
+                        p1 = comp_ptr
+                            .0
+                            .wrapping_offset((*comp_ptr.0.wrapping_offset(high as isize)) as isize);
                         p2 = comp_ptr.0.wrapping_offset(low as isize);
                     }
                 }
@@ -201,21 +214,30 @@ pub fn afforest_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
 
     if !graph.directed() {
         (0..graph.num_nodes()).into_par_iter().for_each(|u| {
-            if unsafe{*comp_ptr.0.wrapping_offset(u as isize) != c} {
+            if unsafe { *comp_ptr.0.wrapping_offset(u as isize) != c } {
                 for v in graph.out_neigh(u).skip(neighbor_rounds) {
                     let mut p1 = comp_ptr.0.wrapping_offset(u as isize);
                     let mut p2 = comp_ptr.0.wrapping_offset(v.as_node() as isize);
-    
-                    while unsafe {*p1 != *p2} {
-                        let (high, low) = unsafe{if *p1 > *p2 { (*p1, *p2) } else { (*p2, *p1) }};
-    
+
+                    while unsafe { *p1 != *p2 } {
+                        let (high, low) = unsafe {
+                            if *p1 > *p2 {
+                                (*p1, *p2)
+                            } else {
+                                (*p2, *p1)
+                            }
+                        };
+
                         let p_high = comp_ptr.0.wrapping_offset(high as isize);
-    
-                        if unsafe{*p_high == low} {
+
+                        if unsafe { *p_high == low } {
                             break;
                         }
-    
-                        if unsafe{(*p_high == high) && (*comp_ptr.0.wrapping_offset(high as isize)== high)} {
+
+                        if unsafe {
+                            (*p_high == high)
+                                && (*comp_ptr.0.wrapping_offset(high as isize) == high)
+                        } {
                             // FIXME: They use atomic CAS here, but it should not be needed
                             // for single-threaded execution.
                             unsafe {
@@ -223,9 +245,11 @@ pub fn afforest_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
                             }
                             break;
                         }
-    
+
                         unsafe {
-                            p1 = comp_ptr.0.wrapping_offset((*comp_ptr.0.wrapping_offset(high as isize)) as isize);
+                            p1 = comp_ptr.0.wrapping_offset(
+                                (*comp_ptr.0.wrapping_offset(high as isize)) as isize,
+                            );
                             p2 = comp_ptr.0.wrapping_offset(low as isize);
                         }
                     }
@@ -236,22 +260,31 @@ pub fn afforest_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
         });
     } else {
         (0..graph.num_nodes()).into_par_iter().for_each(|u| {
-            if unsafe{*comp_ptr.0.wrapping_offset(u as isize) != c} {
+            if unsafe { *comp_ptr.0.wrapping_offset(u as isize) != c } {
                 for v in graph.out_neigh(u).skip(neighbor_rounds) {
                     for v in graph.out_neigh(u).skip(neighbor_rounds) {
                         let mut p1 = comp_ptr.0.wrapping_offset(u as isize);
                         let mut p2 = comp_ptr.0.wrapping_offset(v.as_node() as isize);
-        
-                        while unsafe {*p1 != *p2} {
-                            let (high, low) = unsafe{if *p1 > *p2 { (*p1, *p2) } else { (*p2, *p1) }};
-        
+
+                        while unsafe { *p1 != *p2 } {
+                            let (high, low) = unsafe {
+                                if *p1 > *p2 {
+                                    (*p1, *p2)
+                                } else {
+                                    (*p2, *p1)
+                                }
+                            };
+
                             let p_high = comp_ptr.0.wrapping_offset(high as isize);
-        
-                            if unsafe{*p_high == low} {
+
+                            if unsafe { *p_high == low } {
                                 break;
                             }
-        
-                            if unsafe{(*p_high == high) && (*comp_ptr.0.wrapping_offset(high as isize)== high)} {
+
+                            if unsafe {
+                                (*p_high == high)
+                                    && (*comp_ptr.0.wrapping_offset(high as isize) == high)
+                            } {
                                 // FIXME: They use atomic CAS here, but it should not be needed
                                 // for single-threaded execution.
                                 unsafe {
@@ -259,30 +292,41 @@ pub fn afforest_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
                                 }
                                 break;
                             }
-        
+
                             unsafe {
-                                p1 = comp_ptr.0.wrapping_offset((*comp_ptr.0.wrapping_offset(high as isize)) as isize);
+                                p1 = comp_ptr.0.wrapping_offset(
+                                    (*comp_ptr.0.wrapping_offset(high as isize)) as isize,
+                                );
                                 p2 = comp_ptr.0.wrapping_offset(low as isize);
                             }
                         }
                     }
                 }
-    
+
                 for v in graph.in_neigh(u).skip(neighbor_rounds) {
                     for v in graph.out_neigh(u).skip(neighbor_rounds) {
                         let mut p1 = comp_ptr.0.wrapping_offset(u as isize);
                         let mut p2 = comp_ptr.0.wrapping_offset(v.as_node() as isize);
-        
-                        while unsafe {*p1 != *p2} {
-                            let (high, low) = unsafe{if *p1 > *p2 { (*p1, *p2) } else { (*p2, *p1) }};
+
+                        while unsafe { *p1 != *p2 } {
+                            let (high, low) = unsafe {
+                                if *p1 > *p2 {
+                                    (*p1, *p2)
+                                } else {
+                                    (*p2, *p1)
+                                }
+                            };
 
                             let p_high = comp_ptr.0.wrapping_offset(high as isize);
-        
-                            if unsafe{*p_high == low} {
+
+                            if unsafe { *p_high == low } {
                                 break;
                             }
 
-                            if unsafe{(*p_high == high) && (*comp_ptr.0.wrapping_offset(high as isize)== high)} {
+                            if unsafe {
+                                (*p_high == high)
+                                    && (*comp_ptr.0.wrapping_offset(high as isize) == high)
+                            } {
                                 // FIXME: They use atomic CAS here, but it should not be needed
                                 // for single-threaded execution.
                                 unsafe {
@@ -290,16 +334,17 @@ pub fn afforest_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
                                 }
                                 break;
                             }
-        
+
                             unsafe {
-                                p1 = comp_ptr.0.wrapping_offset((*comp_ptr.0.wrapping_offset(high as isize)) as isize);
+                                p1 = comp_ptr.0.wrapping_offset(
+                                    (*comp_ptr.0.wrapping_offset(high as isize)) as isize,
+                                );
                                 p2 = comp_ptr.0.wrapping_offset(low as isize);
                             }
                         }
                     }
                 }
             }
-
         });
     }
 
@@ -308,10 +353,7 @@ pub fn afforest_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
     comp
 }
 
-fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
-    graph: &G,
-    comp: &Vec<NodeId>,
-) -> bool {
+fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, comp: &Vec<NodeId>) -> bool {
     let mut label_to_source = HashMap::new();
 
     for n in graph.vertices() {

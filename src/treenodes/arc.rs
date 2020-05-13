@@ -1,5 +1,5 @@
-use std::sync::{Arc, RwLock};
 use crate::treenodes::TreeNode;
+use std::sync::{Arc, RwLock};
 
 pub type WrappedNode = Arc<RwLock<Node>>;
 

@@ -138,7 +138,6 @@ pub fn delta_step<'a, V: AsNode, E: WeightedEdge + AsNode, G: CSRGraph<V, E>>(
     dist
 }
 
-
 #[derive(Copy, Clone)]
 struct UnsafeBox(*mut usize);
 
@@ -161,8 +160,8 @@ pub fn delta_step_mt<'a, V: AsNode, E: WeightedEdge + AsNode, G: Send + Sync + C
 
     frontier[0] = source;
 
-    let local_bins: std::sync::Arc<std::sync::Mutex<Vec<Vec<NodeId>>>>
-        = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let local_bins: std::sync::Arc<std::sync::Mutex<Vec<Vec<NodeId>>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
 
     let mut iter = 0;
 
@@ -170,7 +169,8 @@ pub fn delta_step_mt<'a, V: AsNode, E: WeightedEdge + AsNode, G: Send + Sync + C
         let curr_bin_index = unsafe { UnsafeBox(&mut shared_indices[iter & 1] as *mut _) };
         let next_bin_index = unsafe { UnsafeBox(&mut shared_indices[(iter + 1) & 1] as *mut _) };
         let curr_frontier_tail = unsafe { UnsafeBox(&mut frontier_tails[iter & 1] as *mut _) };
-        let next_frontier_tail = unsafe { UnsafeBox(&mut frontier_tails[(iter + 1) & 1] as *mut _) };
+        let next_frontier_tail =
+            unsafe { UnsafeBox(&mut frontier_tails[(iter + 1) & 1] as *mut _) };
 
         (0..unsafe { *curr_frontier_tail.0 })
             .into_par_iter()
@@ -189,7 +189,8 @@ pub fn delta_step_mt<'a, V: AsNode, E: WeightedEdge + AsNode, G: Send + Sync + C
                                 let mut cas_status = false;
                                 if dist[wn.as_node()] == old_dist {
                                     unsafe {
-                                        *dist_ptr.0.wrapping_offset(wn.as_node() as isize) = new_dist;
+                                        *dist_ptr.0.wrapping_offset(wn.as_node() as isize) =
+                                            new_dist;
                                     }
                                     cas_status = true;
                                 }

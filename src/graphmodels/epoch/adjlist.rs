@@ -90,7 +90,7 @@ pub struct RefEntry<'a: 't, 't, T: 'a, E: 'a> {
     pub node: Shared<'t, Node<'a, T, E>>,
 }
 
-impl<'a: 't, 't, T: 'a, E: 'a> RefEntry<'a, 't,  T, E> {
+impl<'a: 't, 't, T: 'a, E: 'a> RefEntry<'a, 't, T, E> {
     #[must_use]
     pub fn get(&self) -> &Node<'a, T, E> {
         unsafe { self.node.as_ref().expect("Refentry was NULL") }
@@ -111,7 +111,9 @@ pub struct IterRefEntry<'a: 't + 'g, 't, 'g, T: 'a, E: 'a> {
     head: Option<RefEntry<'a, 't, T, E>>,
 }
 
-impl<'a: 't + 'g, 't, 'g, T: 'a + Clone, E: 'a + Clone> Iterator for IterRefEntry<'a, 't, 'g, T, E> {
+impl<'a: 't + 'g, 't, 'g, T: 'a + Clone, E: 'a + Clone> Iterator
+    for IterRefEntry<'a, 't, 'g, T, E>
+{
     type Item = RefEntry<'a, 't, T, E>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -136,10 +138,15 @@ impl<'a: 't + 'g, 't, 'g, T: 'a + Clone, E: 'a + Clone> Iterator for IterRefEntr
         } else {
             // Skip head
             unsafe {
-                let next = self.parent.head.load(SeqCst, guard).as_ref().unwrap().next.load(SeqCst, guard);
-                self.head.replace(RefEntry {
-                    node: next.clone(),
-                });
+                let next = self
+                    .parent
+                    .head
+                    .load(SeqCst, guard)
+                    .as_ref()
+                    .unwrap()
+                    .next
+                    .load(SeqCst, guard);
+                self.head.replace(RefEntry { node: next.clone() });
                 self.head.as_ref().map(RefEntry::clone)
             }
         }
@@ -196,7 +203,9 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
     }
 
     pub fn iter<'t>(&'t self, guard: &'g Guard) -> IterRefEntry<'a, 't, 'g, T, E>
-        where 'a: 't + 'g {
+    where
+        'a: 't + 'g,
+    {
         IterRefEntry {
             parent: self,
             guard,
@@ -434,8 +443,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         dim: &mut usize,
         pred_dim: &mut usize,
         guard: &Guard,
-    ) -> ReturnCode<Atomic<Node<T, E>>>
-    {
+    ) -> ReturnCode<Atomic<Node<T, E>>> {
         let guard = &*(guard as *const _);
         *inserted = Shared::null();
         *md_pred = Shared::null();
@@ -746,9 +754,19 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
 
         if self.find_vertex(current, g_n_desc, desc, vertex, guard) || vertex == edge {
             let md_list = &if direction_in {
-                current.as_ref().unwrap().in_edges.as_ref().expect("NO MD LIST")
+                current
+                    .as_ref()
+                    .unwrap()
+                    .in_edges
+                    .as_ref()
+                    .expect("NO MD LIST")
             } else {
-                current.as_ref().unwrap().out_edges.as_ref().expect("NO MD LIST")
+                current
+                    .as_ref()
+                    .unwrap()
+                    .out_edges
+                    .as_ref()
+                    .expect("NO MD LIST")
             };
             let md_current = &mut md_list.head().load(SeqCst, guard);
             let coord = &MDList::<T, E>::key_to_coord(edge);

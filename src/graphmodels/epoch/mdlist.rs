@@ -3,9 +3,9 @@
 use crate::graphmodels::epoch::lftt::NodeDesc;
 use epoch::{Atomic, Guard, Shared};
 
+use std::collections::VecDeque;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::SeqCst;
-use std::collections::VecDeque;
 
 const F_ADP: usize = 0x1;
 const F_DEL: usize = 0x2;
@@ -100,7 +100,7 @@ impl<'a: 't + 'g, 't, 'g, T: 'a, P: 'a> Iterator for Iter<'a, 't, 'g, T, P> {
     fn next(&mut self) -> Option<Entry<'a, 't, 'g, T, P>> {
         unsafe {
             let guard = &*(self.guard as *const _);
-            
+
             if self.returned_prematurely {
                 self.returned_prematurely = false;
                 for d in 0..DIMENSION {
@@ -172,7 +172,6 @@ impl<'a: 't + 'g, 't, 'g, T: 'a, P: 'a> Iterator for Iter<'a, 't, 'g, T, P> {
         //         }
         //         self.dim = 0;
         //     }
-
 
         //     while let Some(node) = self.stack.pop().map(|n| n.load(SeqCst, guard)) {
         //         if node.is_null() || is_delinv(node.tag()) != 0 {
@@ -451,7 +450,6 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a, P: 'a> MDList<'a, T, P> {
                         desc.load(SeqCst, guard),
                         guard,
                     );
-
                 }
             }
 

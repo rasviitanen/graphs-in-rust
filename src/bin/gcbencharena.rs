@@ -7,10 +7,8 @@ use generational_arena::{Arena, Index};
 
 extern crate time;
 
-
-
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 type SharedArena = Rc<RefCell<Arena<Node>>>;
 
@@ -21,10 +19,7 @@ struct Node {
 
 impl Node {
     pub fn new(left: Option<Index>, right: Option<Index>, graph: &SharedArena) -> Index {
-        let node = Node {
-            left,
-            right
-        };
+        let node = Node { left, right };
         graph.borrow_mut().insert(node)
     }
 }
@@ -45,7 +40,7 @@ fn Populate(iDepth: i32, thisNode: Index, graph: &SharedArena) {
     if iDepth <= 0 {
         return;
     } else {
-        let left  = Node::new(None, None, graph);
+        let left = Node::new(None, None, graph);
         let right = Node::new(None, None, graph);
         {
             let mut graph_borrow = graph.borrow_mut();
@@ -135,7 +130,11 @@ pub fn main() {
 
     let graph2 = Rc::new(RefCell::new(Arena::new()));
     let longLivedTree = Node::new(None, None, &graph2);
-    Populate(gapbs::types::kLongLivedTreeDepth, longLivedTree.clone(), &graph2);
+    Populate(
+        gapbs::types::kLongLivedTreeDepth,
+        longLivedTree.clone(),
+        &graph2,
+    );
 
     PrintDiagnostics();
 

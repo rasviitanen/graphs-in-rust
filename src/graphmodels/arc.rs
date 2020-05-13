@@ -117,7 +117,8 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         }
 
         for (v, e, w) in edge_list {
-            graph.add_edge(*v, *e, w, true)
+            graph.add_edge(*v, *e, w, true);
+            graph.num_edges_directed += 1;
         }
         graph
     }
@@ -130,6 +131,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         }
         for (v, e, w) in edge_list {
             graph.add_edge(*v, *e, w, false);
+            graph.num_edges_undirected += 1;
         }
 
         graph
@@ -174,7 +176,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             for edge in vertex.read().expect("Could not read").out_edges.values() {
                 edges.push(WrappedNode::clone(&edge));
             }
-            
+
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -187,7 +189,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             for edge in vertex.read().expect("Could not read").in_edges.values() {
                 edges.push(WrappedNode::clone(&edge));
             }
-            
+
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -206,7 +208,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         for edge in self.vertices.read().expect("Could not read").values() {
             edges.push(WrappedNode::clone(&edge));
         }
-        
+
         Box::new(edges.into_iter())
     }
 
@@ -232,6 +234,30 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
 
     fn old_bfs(&self, v: NodeId) {
         self.bfs(v, None);
+    }
+
+    fn op_add_vertex(&self, v: NodeId) {
+        self.add_vertex(v, None);
+    }
+
+    fn op_add_edge(&self, v: NodeId, e: NodeId) {
+        self.add_edge(v, e, &None, false);
+    }
+
+    fn op_delete_edge(&self, v: NodeId, e: NodeId) {
+        self.vertices
+            .read()
+            .unwrap()
+            .get(&v)
+            .map(|vertex| vertex.write().unwrap().out_edges.remove(&e));
+    }
+
+    fn op_delete_vertex(&self, v: NodeId) {
+        self.vertices.write().unwrap().remove(&v);
+    }
+
+    fn op_find_vertex(&self, v: NodeId) {
+        self.find_vertex(v);
     }
 }
 
@@ -264,16 +290,14 @@ impl<T> Graph<T> {
         new_node
     }
 
-    pub fn add_edge(&mut self, vertex: usize, edge: usize, weight: &Option<usize>, directed: bool) {
+    pub fn add_edge(&self, vertex: usize, edge: usize, weight: &Option<usize>, directed: bool) {
         if let (Some(vertex_node), Some(edge_node)) = (
             self.vertices.read().expect("Could not read").get(&vertex),
             self.vertices.read().expect("Could not read").get(&edge),
         ) {
             if !directed {
-                self.num_edges_undirected += 1;
                 Node::add_out_edge(&edge_node, &vertex_node, weight);
             } else {
-                self.num_edges_directed += 1;
                 Node::add_in_edge(&edge_node, &vertex_node, weight);
             }
 

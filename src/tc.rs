@@ -21,7 +21,6 @@
 
 use crate::graph::CSRGraph;
 use crate::types::*;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
@@ -29,6 +28,7 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSlice;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// Has been manually verified,
 /// Only works on undirected, with sorted nodes
@@ -57,7 +57,6 @@ fn ordered_count<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usiz
 
                 idx = 0;
             }
-
         }
     }
 
@@ -65,33 +64,36 @@ fn ordered_count<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) -> usiz
 }
 
 fn ordered_count_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(graph: &G) -> usize {
-    (0..graph.num_nodes()).into_par_iter().map(|u| {
-        let mut count = 0;
-        for v in graph.out_neigh(u) {
-            if v.as_node() > u {
-                break;
-            }
-
-            let it: Vec<_> = graph.out_neigh(u).collect();
-            let mut idx = 0;
-            for w in graph.out_neigh(v.as_node()) {
-                if w.as_node() > v.as_node() {
+    (0..graph.num_nodes())
+        .into_par_iter()
+        .map(|u| {
+            let mut count = 0;
+            for v in graph.out_neigh(u) {
+                if v.as_node() > u {
                     break;
                 }
 
-                while it[idx].as_node() < w.as_node() {
-                    idx += 1;
-                }
+                let it: Vec<_> = graph.out_neigh(u).collect();
+                let mut idx = 0;
+                for w in graph.out_neigh(v.as_node()) {
+                    if w.as_node() > v.as_node() {
+                        break;
+                    }
 
-                if w.as_node() == it[idx].as_node() {
-                    count += 1;
-                }
+                    while it[idx].as_node() < w.as_node() {
+                        idx += 1;
+                    }
 
-                idx = 0;
+                    if w.as_node() == it[idx].as_node() {
+                        count += 1;
+                    }
+
+                    idx = 0;
+                }
             }
-        }
-        count
-    }).sum()
+            count
+        })
+        .sum()
 }
 
 fn verifier<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G, test_total: usize) -> bool {

@@ -6,7 +6,7 @@ pub trait TreeNode {
     fn set_edges(&mut self, l: Self::EdgeRepr, r: Self::EdgeRepr);
 }
 
+pub mod arc;
 pub mod cc;
 pub mod msgc;
-pub mod arc;
 pub mod rc;

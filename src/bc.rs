@@ -29,6 +29,7 @@ use crate::graph::CSRGraph;
 use crate::slidingqueue::SlidingQueue;
 use crate::types::*;
 use bit_vec::BitVec;
+use crossbeam_utils::thread;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
@@ -37,7 +38,6 @@ use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSlice;
 use std::collections::HashSet;
-use crossbeam_utils::thread;
 
 type Score = f64;
 type Count = f64;
@@ -162,7 +162,6 @@ pub fn brandes<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     scores
 }
 
-
 pub fn brandes_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
     graph: &G,
     sp: &mut SourcePicker<'a, V, E, G>,
@@ -215,7 +214,6 @@ pub fn brandes_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(
                 deltas[*u] = delta_u;
                 scores[*u] += delta_u;
             }
-
         }
     }
 

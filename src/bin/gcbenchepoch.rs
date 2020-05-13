@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crossbeam_epoch::{self as epoch, Atomic, Guard, Shared};
 
-
 type PropType = (i32, i32);
 
 struct Array {
@@ -23,7 +22,12 @@ fn NumIters(i: i32) -> i32 {
     2 * TreeSize(gapbs::types::kStretchTreeDepth) / TreeSize(i)
 }
 
-fn Populate<'a>(guard: &Guard, iDepth: i32, thisNode: Atomic<Node<'a, usize, EdgeInfo>>, graph: &'a Graph<'a, usize>) {
+fn Populate<'a>(
+    guard: &Guard,
+    iDepth: i32,
+    thisNode: Atomic<Node<'a, usize, EdgeInfo>>,
+    graph: &'a Graph<'a, usize>,
+) {
     if iDepth <= 0 {
         return;
     } else {
@@ -59,7 +63,11 @@ fn Populate<'a>(guard: &Guard, iDepth: i32, thisNode: Atomic<Node<'a, usize, Edg
     }
 }
 
-fn MakeTree<'a>(guard: &Guard, iDepth: i32, graph: &'a Graph<'a, usize>) -> Atomic<Node<'a, usize, EdgeInfo>> {
+fn MakeTree<'a>(
+    guard: &Guard,
+    iDepth: i32,
+    graph: &'a Graph<'a, usize>,
+) -> Atomic<Node<'a, usize, EdgeInfo>> {
     if iDepth <= 0 {
         graph.add_vertex(1, None).expect("B3").1
     } else {
@@ -83,13 +91,13 @@ fn MakeTree<'a>(guard: &Guard, iDepth: i32, graph: &'a Graph<'a, usize>) -> Atom
             Graph::connect(
                 result.load(Ordering::SeqCst, guard).as_ref().unwrap(),
                 edge_info_l,
-                false
+                false,
             );
 
             Graph::connect(
                 result.load(Ordering::SeqCst, guard).as_ref().unwrap(),
                 edge_info_r,
-                false
+                false,
             );
         }
 
@@ -172,7 +180,12 @@ pub fn main() {
     );
     let graph = Graph::new(gapbs::types::GRAPH_SIZE, false);
     let kLongLivedTree = graph.add_vertex(1, None).expect("B5").1;
-    Populate(guard, gapbs::types::kLongLivedTreeDepth, kLongLivedTree.clone(), &graph);
+    Populate(
+        guard,
+        gapbs::types::kLongLivedTreeDepth,
+        kLongLivedTree.clone(),
+        &graph,
+    );
 
     PrintDiagnostics();
 

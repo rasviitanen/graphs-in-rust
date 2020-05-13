@@ -8,7 +8,6 @@ use crate::graph::CSRGraph;
 use crate::types::*;
 use std::collections::HashMap;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
@@ -16,6 +15,7 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSlice;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 type Score = f64;
 const K_DAMP: f64 = 0.85;
@@ -28,7 +28,6 @@ pub fn page_rank_pull<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     epsilon: Option<f64>,
 ) -> Vec<Score> {
     let epsilon = epsilon.unwrap_or(0.0);
-
     let init_score = 1.0 / graph.num_nodes() as f64;
     let base_score = (1.0 - K_DAMP) / graph.num_nodes() as f64;
 
@@ -60,6 +59,7 @@ pub fn page_rank_pull<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(
     }
 
     // assert!(verifier(graph, &scores, 0.0004));
+    // dbg!(&scores);
     scores
 }
 
@@ -79,22 +79,29 @@ pub fn page_rank_pull_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, 
     let mut outgoing_contrib = vec![0.0; graph.num_nodes()];
 
     for i in 0..max_iters {
-        outgoing_contrib.par_iter_mut().enumerate().for_each(|(n, e)| {
-            *e = scores[n] / graph.out_degree(n) as f64;
-        });
+        outgoing_contrib
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(n, e)| {
+                *e = scores[n] / graph.out_degree(n) as f64;
+            });
 
-        let error: f64 = scores.par_iter_mut().enumerate().map(|(u, e)| {
-            let mut incoming_total = 0.0;
+        let error: f64 = scores
+            .par_iter_mut()
+            .enumerate()
+            .map(|(u, e)| {
+                let mut incoming_total = 0.0;
 
-            for v in graph.in_neigh(u) {
-                incoming_total += outgoing_contrib[v.as_node()];
-            }
+                for v in graph.in_neigh(u) {
+                    incoming_total += outgoing_contrib[v.as_node()];
+                }
 
-            let old_score = *e;
-            let new_score = base_score + K_DAMP * incoming_total;
-            *e = new_score;
-            f64::abs(new_score - old_score)
-        }).sum();
+                let old_score = *e;
+                let new_score = base_score + K_DAMP * incoming_total;
+                *e = new_score;
+                f64::abs(new_score - old_score)
+            })
+            .sum();
 
         if error < epsilon {
             break;

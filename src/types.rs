@@ -16,22 +16,20 @@ pub type WEdge = (NodeId, DestId, Weight);
 pub type EdgeList = Vec<Edge>;
 pub type WEdgeList = Vec<WEdge>;
 
-
 // GAP BENCHMARK SUITE
-pub const NUM_TRIALS: usize = 10;
+pub const NUM_TRIALS: usize = 1;
 pub const SYMMETRIZE: bool = true;
-pub const UNIFORM: bool = false;
+pub const UNIFORM: bool = true;
 pub const NEEDS_WEIGHTS: bool = true;
-pub const FILE_NAME: &'static str = "datasets/opsahl-openflights.out"; // "datasets/dolphins.out"
+pub const FILE_NAME: &'static str = ""; // "datasets/opsahl-openflights.out"
 pub const INVERT: bool = false;
-pub const SCALE: usize = 8;
-pub const DEGREE: usize = 40;
-
+pub const SCALE: usize = 6;
+pub const DEGREE: usize = 4;
 
 // GC BENCH
 pub const GRAPH_SIZE: i64 = 1 << 18;
-pub const kStretchTreeDepth: i32 =   16; // 18;
+pub const kStretchTreeDepth: i32 = 16; // 18;
 pub const kLongLivedTreeDepth: i32 = 14; // 16;
-pub const kMaxTreeDepth: i32 =       14; // 16;
+pub const kMaxTreeDepth: i32 = 14; // 16;
 pub const kArraySize: i32 = 500000;
 pub const kMinTreeDepth: i32 = 4;

@@ -21,25 +21,25 @@ impl ScopedTimer {
 
     pub fn elapsed_since_checkpoint(&mut self) {
         let checkpoint = self.stop.pop().expect("No checkpoint");
-        println!(
-            "\t[{}] : {:?} msec ",
-            checkpoint.0,
-            SystemTime::now()
-                .duration_since(checkpoint.1)
-                .unwrap()
-                .as_millis(),
-        )
+        // println!(
+        //     "\t[{}] : {:?} msec ",
+        //     checkpoint.0,
+        //     SystemTime::now()
+        //         .duration_since(checkpoint.1)
+        //         .unwrap()
+        //         .as_millis(),
+        // )
     }
 
     pub fn elapsed(&self) {
-        println!(
-            "\t\u{001B}[1m[{}] : {:?} msec\u{001B}[0m",
-            self.name,
-            SystemTime::now()
-                .duration_since(self.start)
-                .unwrap()
-                .as_millis(),
-        );
+        // println!(
+        //     "\t\u{001B}[1m[{}] : {:?} msec\u{001B}[0m",
+        //     self.name,
+        //     SystemTime::now()
+        //         .duration_since(self.start)
+        //         .unwrap()
+        //         .as_millis(),
+        // );
     }
 }
 

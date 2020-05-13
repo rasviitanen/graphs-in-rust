@@ -174,7 +174,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             for edge in vertex.borrow().out_edges.values() {
                 edges.push(WrappedNode::clone(&edge));
             }
-            
+
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -187,7 +187,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
             for edge in vertex.borrow().in_edges.values() {
                 edges.push(WrappedNode::clone(&edge));
             }
-            
+
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -232,6 +232,29 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
 
     fn old_bfs(&self, v: NodeId) {
         self.bfs(v, None);
+    }
+
+    fn op_add_vertex(&self, v: NodeId) {
+        self.add_vertex(v, None);
+    }
+
+    fn op_add_edge(&self, v: NodeId, e: NodeId) {
+        self.add_edge(v, e, &None, false);
+    }
+
+    fn op_delete_edge(&self, v: NodeId, e: NodeId) {
+        self.vertices
+            .borrow()
+            .get(&v)
+            .map(|vertex| vertex.borrow_mut().out_edges.remove(&e));
+    }
+
+    fn op_delete_vertex(&self, v: NodeId) {
+        self.vertices.borrow_mut().remove(&v);
+    }
+
+    fn op_find_vertex(&self, v: NodeId) {
+        self.find_vertex(v);
     }
 }
 

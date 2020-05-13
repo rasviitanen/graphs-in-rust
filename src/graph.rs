@@ -3,6 +3,12 @@ use crate::types::*;
 pub type Range<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
 pub trait CSRGraph<V, E> {
+    fn op_add_vertex(&self, v: NodeId);
+    fn op_add_edge(&self, v: NodeId, e: NodeId);
+    fn op_delete_edge(&self, v: NodeId, e: NodeId);
+    fn op_delete_vertex(&self, v: NodeId);
+    fn op_find_vertex(&self, v: NodeId);
+
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self;
     fn build_undirected(num_nodes: usize, edge_list: &EdgeList) -> Self;
 

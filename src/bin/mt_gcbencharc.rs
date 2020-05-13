@@ -45,7 +45,10 @@ fn Populate(iDepth: i32, thisNode: NodeModel::WrappedNode) {
     if iDepth <= 0 {
         return;
     } else {
-        thisNode.write().unwrap().set_edges(NodeModel::Node::new(), NodeModel::Node::new());
+        thisNode
+            .write()
+            .unwrap()
+            .set_edges(NodeModel::Node::new(), NodeModel::Node::new());
         Populate(iDepth - 1, thisNode.read().unwrap().left().unwrap());
         Populate(iDepth - 1, thisNode.read().unwrap().right().unwrap());
     }

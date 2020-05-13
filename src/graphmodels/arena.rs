@@ -49,6 +49,7 @@ impl<T> ArenaNode<T> {
 pub struct Graph<T> {
     vertices: RefCell<Arena<ArenaNode<T>>>,
     directed: bool,
+    cache: RefCell<BTreeMap<NodeId, Index>>,
     n_edges: Cell<usize>,
 }
 
@@ -131,7 +132,7 @@ impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
             for edge in &self.vertices.borrow().get(found.index).unwrap().out_edges {
                 edges.push(edge.clone());
             }
-            
+
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -144,7 +145,7 @@ impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
             for edge in &self.vertices.borrow().get(found.index).unwrap().in_edges {
                 edges.push(edge.clone());
             }
-            
+
             Box::new(edges.into_iter())
         } else {
             panic!("Vertex not found");
@@ -166,7 +167,7 @@ impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
                 weight: None,
             });
         }
-        
+
         Box::new(edges.into_iter())
     }
 
@@ -201,6 +202,33 @@ impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
     fn old_bfs(&self, v: NodeId) {
         self.bfs(v, None);
     }
+
+    fn op_add_vertex(&self, v: NodeId) {
+        self.add_vertex(v, None);
+    }
+
+    fn op_add_edge(&self, v: NodeId, e: NodeId) {
+        self.add_edge(v, e, &None, false);
+    }
+
+    fn op_delete_edge(&self, v: NodeId, e: NodeId) {
+        self.get_vertex(v).map(|idx| {
+            self.vertices.borrow_mut().get_mut(idx.index).map(|vertex| {
+                self.get_vertex(e)
+                    .map(|edge| vertex.out_edges.remove(&edge))
+            });
+        });
+    }
+
+    fn op_delete_vertex(&self, v: NodeId) {
+        self.get_vertex(v).map(|idx| {
+            self.vertices.borrow_mut().remove(idx.index);
+        });
+    }
+
+    fn op_find_vertex(&self, v: NodeId) {
+        self.find_vertex(v);
+    }
 }
 
 impl<T> Graph<T> {
@@ -208,36 +236,44 @@ impl<T> Graph<T> {
         Self {
             vertices: RefCell::new(Arena::new()),
             directed,
+            cache: RefCell::new(BTreeMap::new()),
             n_edges: Cell::new(0),
         }
     }
 
     pub fn add_vertex(&self, key: usize, value: Option<T>) -> Index {
         let node = ArenaNode::new(key, value);
-        self.vertices.borrow_mut().insert(node)
+        let index = self.vertices.borrow_mut().insert(node);
+        self.cache.borrow_mut().insert(key, index);
+        index
     }
 
     pub fn find_vertex(&self, node_id: usize) -> Option<Index> {
-        for (idx, node) in self.vertices.borrow().iter() {
-            if node.node_id == node_id {
-                return Some(idx);
-            }
-        }
+        // for (idx, node) in self.vertices.borrow().iter() {
+        //     if node.node_id == node_id {
+        //         return Some(idx);
+        //     }
+        // }
 
-        None
+        // None
+        self.cache.borrow().get(&node_id).map(|n| *n)
     }
 
     pub fn get_vertex(&self, node_id: usize) -> Option<CustomIndex> {
-        for (idx, node) in self.vertices.borrow().iter() {
-            if node.node_id == node_id {
-                return Some(CustomIndex {
-                    index: idx,
-                    weight: None,
-                });
-            }
-        }
+        // for (idx, node) in self.vertices.borrow().iter() {
+        //     if node.node_id == node_id {
+        //         return Some(CustomIndex {
+        //             index: idx,
+        //             weight: None,
+        //         });
+        //     }
+        // }
 
-        None
+        // None
+        self.cache.borrow().get(&node_id).map(|n| CustomIndex {
+            index: *n,
+            weight: None,
+        })
     }
 
     pub fn add_edge(&self, node1: usize, node2: usize, weight: &Option<Weight>, directed: bool) {
@@ -277,7 +313,8 @@ impl<T> Graph<T> {
                 self.n_edges.update(|x| x + 1);
             }
         } else {
-            panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
+            // dbg!(node1, node2);
+            // panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
         }
     }
 
