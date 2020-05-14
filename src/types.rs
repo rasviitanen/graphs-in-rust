@@ -18,10 +18,10 @@ pub type WEdgeList = Vec<WEdge>;
 
 // GAP BENCHMARK SUITE
 pub const NUM_TRIALS: usize = 1;
-pub const SYMMETRIZE: bool = true;
+pub const SYMMETRIZE: bool = false;
 pub const UNIFORM: bool = false;
-pub const NEEDS_WEIGHTS: bool = false;
-pub const FILE_NAME: &'static str = "datasets/opsahl-openflights.out"; // ""
+pub const NEEDS_WEIGHTS: bool = true;
+pub const FILE_NAME: &'static str = "datasets/ca-AstroPh.out"; // ""
 pub const INVERT: bool = false;
 pub const SCALE: usize = 6;
 pub const DEGREE: usize = 1;

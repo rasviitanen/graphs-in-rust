@@ -69,9 +69,9 @@ def run_until_no_change(kernel):
     print("[" + kernel + "]" + " DONE!")
 
 
-run_until_no_change("bc");
-run_until_no_change("bfs");
-run_until_no_change("tc");
+# run_until_no_change("bc");
+# run_until_no_change("bfs");
+# run_until_no_change("tc");
 run_until_no_change("sssp");
-run_until_no_change("cc");
-run_until_no_change("pr");
+# run_until_no_change("cc");
+# run_until_no_change("pr");
