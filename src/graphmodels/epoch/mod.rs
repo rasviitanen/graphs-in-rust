@@ -465,11 +465,16 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
     }
 
     fn op_delete_vertex(&self, v: NodeId) {
+        let op = OpType::Delete(v);
+        let find_txn = self.inner.txn(vec![op]);
+        let res = find_txn.execute();
         self.delete_vertex(v);
     }
 
     fn op_find_vertex(&self, v: NodeId) {
-        // self.find_vertex(v);
-        self.cache.read().unwrap().get(&v);
+        let op = OpType::Find(v);
+        let find_txn = self.inner.txn(vec![op]);
+        let res = find_txn.execute();
+        // self.cache.read().unwrap().get(&v);
     }
 }

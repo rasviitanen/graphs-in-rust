@@ -28,3 +28,12 @@ lock_free_bloomfilter = { path = "../lock-free-bloomfilter" }
 
 [profile.release]
 debug = true
+
+[features]
+ops = []
+bfs = []
+bc = []
+tc = []
+sssp = []
+cc = []
+pr = []

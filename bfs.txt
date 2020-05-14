@@ -1,0 +1,3 @@
+
+BFS/ARC [-8.3168% +0.7002% +9.7367%] (p = 0.90 > 0.05) No change in performance 
+BFS/RC [-10.818% -5.2461% +0.6629%] (p = 0.12 > 0.05) No change in performance 

@@ -30,11 +30,12 @@ use rayon::iter::ParallelExtend;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSlice;
 use rand::prelude::*;
+use crossbeam_utils::thread;
 
 pub fn ops<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) {
-    let rnd_id = || thread_rng().gen_range(1, graph.num_nodes()-1);
+    let rnd_id = || thread_rng().gen_range(1, graph.num_nodes());
 
-    (0..1000).into_iter().for_each(|_| {
+    (0..10000).into_iter().for_each(|_| {
         let mut rng = thread_rng();
         match rng.gen_range(1, 100) {
             1..=25 => {
@@ -58,14 +59,14 @@ pub fn ops<'a, V: AsNode, E: AsNode, G: CSRGraph<V, E>>(graph: &G) {
 }
 
 pub fn ops_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(graph: &G) {
-    let rnd_id = || thread_rng().gen_range(1, graph.num_nodes()-1);
+    let rnd_id = || thread_rng().gen_range(1, graph.num_nodes());
 
-    (0..1000).into_par_iter().for_each(|_| {
+    (0..10000).into_par_iter().for_each(|_| {
         let mut rng = thread_rng();
         match rng.gen_range(1, 100) {
             1..=25 => {
+                graph.op_find_vertex(rnd_id());
                 // dbg!("add vx");
-                graph.op_add_vertex(rnd_id());
             }
             // 50..=75 => {
             //     // dbg!("add ed");
@@ -79,9 +80,42 @@ pub fn ops_mt<'a, V: AsNode, E: AsNode, G: Send + Sync + CSRGraph<V, E>>(graph: 
             // }
             _ => {
                 // dbg!("fnd");
-                graph.op_add_vertex(rnd_id());
-                // graph.op_find_vertex(rnd_id());
+                graph.op_find_vertex(rnd_id());
             }
         }
+    });
+}
+
+pub fn ops_epoch_mt(graph: &crate::graphmodels::epoch::Graph<usize>) {
+    let rnd_id = || thread_rng().gen_range(1, graph.num_nodes());
+
+    (0..200).into_par_iter().for_each(|_| {
+        let mut rng = thread_rng();
+        let mut ops = Vec::new();
+        for _ in 0..50 {
+            match rng.gen_range(1, 100) {
+                1..=25 => {
+                    // dbg!("add vx");
+                    ops.push(crate::graphmodels::epoch::OpType::Find(rnd_id()));
+                }
+                // 50..=75 => {
+                //     // dbg!("add ed");
+                //     // graph.op_add_edge(rnd_id(), rnd_id());
+                // }
+                // 51..=75 => {
+                //     graph.op_delete_edge(black_box(rnd_id()), black_box(rnd_id()));
+                // }
+                // 76..=100 => {
+                //     graph.op_delete_vertex(black_box(rnd_id()));
+                // }
+                _ => {
+                    // dbg!("fnd");
+                    ops.push(crate::graphmodels::epoch::OpType::Find(rnd_id()));
+                    // graph.op_find_vertex(rnd_id());
+                }
+            }
+        }
+
+        graph.execute_ops(ops);
     });
 }
