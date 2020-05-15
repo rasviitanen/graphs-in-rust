@@ -104,8 +104,7 @@ impl<T> Node<T> {
 pub struct Graph<T> {
     vertices: RwLock<BTreeMap<usize, WrappedNode<T>>>,
     num_nodes: usize,
-    num_edges_directed: usize,
-    num_edges_undirected: usize,
+    num_edges: usize,
     directed: bool,
 }
 
@@ -118,7 +117,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
 
         for (v, e, w) in edge_list {
             graph.add_edge(*v, *e, w, true);
-            graph.num_edges_directed += 1;
+            graph.num_edges += 1;
         }
         graph
     }
@@ -131,7 +130,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         }
         for (v, e, w) in edge_list {
             graph.add_edge(*v, *e, w, false);
-            graph.num_edges_undirected += 1;
+            graph.num_edges += 1;
         }
 
         graph
@@ -146,11 +145,15 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn num_edges(&self) -> usize {
-        self.num_edges_undirected
+        unimplemented!();
     }
 
     fn num_edges_directed(&self) -> usize {
-        self.num_edges_directed
+        if self.directed {
+            self.num_edges
+        } else {
+            self.num_edges*2
+        }
     }
 
     fn out_degree(&self, v: NodeId) -> usize {
@@ -266,8 +269,7 @@ impl<T> Graph<T> {
         Graph {
             vertices: RwLock::new(BTreeMap::new()),
             num_nodes: 0,
-            num_edges_directed: 0,
-            num_edges_undirected: 0,
+            num_edges: 0,
             directed,
         }
     }
@@ -315,10 +317,8 @@ impl<T> Graph<T> {
         directed: bool,
     ) {
         if !directed {
-            self.num_edges_undirected += 1;
             Node::add_out_edge(&edge_node, &vertex_node, weight);
         } else {
-            self.num_edges_directed += 1;
             Node::add_in_edge(&edge_node, &vertex_node, weight);
         }
 

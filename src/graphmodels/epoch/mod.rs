@@ -81,8 +81,7 @@ pub struct Graph<'a, T: Copy + Clone + Into<usize>> {
     cache: Arc<RwLock<BTreeMap<NodeId, &'a Node<'a, T, E>>>>,
     directed: bool,
     num_nodes: usize,
-    num_edges_directed: usize,
-    num_edges_undirected: usize,
+    num_edges: usize,
 }
 
 type E = EdgeInfo;
@@ -94,8 +93,7 @@ impl<'a, T: 'a + Copy + Clone + Into<usize>> Graph<'a, T> {
             cache: Arc::new(RwLock::new(BTreeMap::new())),
             directed,
             num_nodes: 0,
-            num_edges_directed: 0,
-            num_edges_undirected: 0,
+            num_edges: 0,
         }
     }
 
@@ -235,7 +233,7 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
                 weight: w.as_ref().map(|x| *x),
             };
 
-            graph.num_edges_directed += 1;
+            graph.num_edges += 1;
 
             if let (Some(en), Some(vn)) = (
                 graph.cache.read().unwrap().get(e),
@@ -282,6 +280,8 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
                 weight: w.as_ref().map(|x| *x),
             };
 
+            graph.num_edges += 1;
+
             if let (Some(en), Some(vn)) = (
                 graph.cache.read().unwrap().get(e),
                 graph.cache.read().unwrap().get(v),
@@ -311,7 +311,11 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
 
     #[inline]
     fn num_edges_directed(&self) -> usize {
-        self.num_edges_directed
+        if self.directed {
+            self.num_edges
+        } else {
+            self.num_edges*2
+        }
     }
 
     fn out_degree(&self, v: NodeId) -> usize {

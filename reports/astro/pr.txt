@@ -1,0 +1,9 @@
+
+PR/ARC [243.75 ms 244.37 ms 245.16 ms] [-0.6787% -0.2684% +0.1207%] (p = 0.25 > 0.05) No change in performance 
+PR/ARC_mt [100.92 ms 103.38 ms 104.64 ms] [-3.5750% +0.4543% +4.7272%] (p = 0.84 > 0.05) No change in performance 
+PR/RC [184.93 ms 185.38 ms 185.96 ms] [-0.0583% +0.5091% +1.0104%] (p = 0.10 > 0.05) No change in performance 
+PR/CC [191.61 ms 191.84 ms 192.07 ms] [-1.3876% -1.0665% -0.7328%] (p = 0.00 < 0.05) 
+PR/GC [188.43 ms 188.95 ms 189.39 ms] [-3.1822% -0.5642% +1.5126%] (p = 0.71 > 0.05) No change in performance 
+PR/ARENA [135.51 ms 136.78 ms 138.12 ms] [-2.6977% -1.2571% -0.1237%] (p = 0.08 > 0.05) No change in performance 
+PR/EPOCH [317.89 ms 318.51 ms 318.98 ms] [-0.7645% -0.3317% +0.0203%] (p = 0.14 > 0.05) No change in performance 
+PR/EPOCH_mt [107.52 ms 110.43 ms 111.79 ms] [-3.6827% +0.0092% +3.9476%] (p = 1.00 > 0.05) No change in performance 

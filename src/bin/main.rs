@@ -17,7 +17,6 @@ use gapbs::graphmodels;
 use gapbs::types::*;
 
 type Graph<'a> = graphmodels::epoch::Graph<'a, usize>;
-// type Graph = graphmodels::arena::Graph<usize>;
 
 fn main() {
     println!(
@@ -39,25 +38,25 @@ fn main() {
     let mut source_picker2 = SourcePicker::new(&graph);
     let mut source_picker3 = SourcePicker::new(&graph);
 
-    benchmark_kernel(
-        &graph,
-        Box::new(|g| {
-            gapbs::ops::ops_mt(g);
-        }),
-        Box::new(|| {}),
-        Box::new(|| {}),
-    );
-
-    // println!("Breadth-First Search (BFS) - direction optimizing");
-    // benchmark_kernel_with_sp(
+    // benchmark_kernel(
     //     &graph,
-    //     &mut source_picker1,
-    //     Box::new(|g: &Graph, sp| {
-    //         gapbs::bfs::do_bfs(g, sp.pick_next());
+    //     Box::new(|g| {
+    //         gapbs::ops::ops_mt(g);
     //     }),
     //     Box::new(|| {}),
     //     Box::new(|| {}),
     // );
+
+    println!("Breadth-First Search (BFS) - direction optimizing");
+    benchmark_kernel_with_sp(
+        &graph,
+        &mut source_picker1,
+        Box::new(|g: &Graph, sp| {
+            gapbs::bfs::do_bfs(g, sp.pick_next());
+        }),
+        Box::new(|| {}),
+        Box::new(|| {}),
+    );
 
     // println!("Single-Source Shortest Paths (SSSP) - delta stepping");
     // benchmark_kernel_with_sp(
@@ -478,13 +477,13 @@ fn bench_cc(c: &mut Criterion) {
 fn bench_bc(c: &mut Criterion) {
     let mut group = c.benchmark_group("BC");
     bench_bc!("ARC", graphmodels::arc, group);
-    bench_bc_mt!("ARC_mt", graphmodels::arc, group);
+    // bench_bc_mt!("ARC_mt", graphmodels::arc, group);
     bench_bc!("RC", graphmodels::rc, group);
     bench_bc!("CC", graphmodels::cc, group);
     bench_bc!("GC", graphmodels::gc, group);
     bench_bc!("ARENA", graphmodels::arena, group);
     bench_bc!("EPOCH", graphmodels::epoch, group);
-    bench_bc_mt!("EPOCH_mt", graphmodels::epoch, group);
+    // bench_bc_mt!("EPOCH_mt", graphmodels::epoch, group);
 }
 
 #[cfg(feature = "tc")]

@@ -1,0 +1,7 @@
+
+SSSP/ARC [14.131 us 14.422 us 14.954 us] [-2.8314% -0.5824% +1.8845%] (p = 0.67 > 0.05) No change in performance 
+SSSP/RC [26.367 us 26.486 us 26.618 us] [-1.0170% -0.1176% +0.7233%] (p = 0.80 > 0.05) No change in performance 
+SSSP/CC [29.749 us 29.921 us 30.062 us] [-1.8846% -1.0098% +0.0025%] (p = 0.06 > 0.05) No change in performance 
+SSSP/GC [31.410 us 31.557 us 31.720 us] [-2.4721% -1.3020% -0.2582%] (p = 0.04 < 0.05) 
+SSSP/ARENA [15.260 us 15.399 us 15.540 us] [-1.4888% -0.0937% +1.4113%] (p = 0.90 > 0.05) No change in performance 
+SSSP/EPOCH [13.623 us 13.853 us 14.189 us] [-0.8884% +0.6441% +2.1035%] (p = 0.45 > 0.05) No change in performance 

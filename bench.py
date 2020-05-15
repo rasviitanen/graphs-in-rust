@@ -56,7 +56,7 @@ def run_until_no_change(kernel):
             print(word.decode('utf-8') + ' ', end='')
 
     print("Everything is OK! Wrtiing test report...")
-    filename = "reports/" + kernel + ".txt"
+    filename = "reports/euroroad/" + kernel + ".txt"
     myfile = open(filename, 'wb')
     for word in test_results:
         if b'/' in word:
@@ -65,13 +65,13 @@ def run_until_no_change(kernel):
     myfile.close()
 
     print("Copyting violin plot")
-    copyfile("target/criterion/" + kernel + "/report/violin.svg", "reports/" + kernel + ".svg")
+    copyfile("target/criterion/" + kernel + "/report/violin.svg", "reports/euroroad/" + kernel + ".svg")
     print("[" + kernel + "]" + " DONE!")
 
 
 # run_until_no_change("bc");
-# run_until_no_change("bfs");
-# run_until_no_change("tc");
+run_until_no_change("bfs");
+run_until_no_change("tc");
 run_until_no_change("sssp");
-# run_until_no_change("cc");
-# run_until_no_change("pr");
+run_until_no_change("cc");
+run_until_no_change("pr");
