@@ -18,13 +18,13 @@ pub type WEdgeList = Vec<WEdge>;
 
 // GAP BENCHMARK SUITE
 pub const NUM_TRIALS: usize = 1;
-pub const SYMMETRIZE: bool = false; // false = undirected
-pub const UNIFORM: bool = false;
+pub const SYMMETRIZE: bool = true; // false = undirected
+pub const UNIFORM: bool = true;
 pub const NEEDS_WEIGHTS: bool = true;
-pub const FILE_NAME: &'static str = "datasets/euroroad.out"; // ""
+pub const FILE_NAME: &'static str = ""; // ""
 pub const INVERT: bool = false;
-pub const SCALE: usize = 6;
-pub const DEGREE: usize = 1;
+pub const SCALE: usize = 8;
+pub const DEGREE: usize = 10;
 
 // GC BENCH
 pub const GRAPH_SIZE: i64 = 1 << 18;

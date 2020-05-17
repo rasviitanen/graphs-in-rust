@@ -1,0 +1,9 @@
+
+PR/ARC [584.96 us 586.47 us 588.26 us] [-0.8045% -0.2782% +0.2062%] (p = 0.31 > 0.05) No change in performance 
+PR/ARC_mt [1.1852 ms 1.1984 ms 1.2098 ms] [-0.7634% +0.6361% +1.8461%] (p = 0.39 > 0.05) No change in performance 
+PR/RC [438.78 us 440.19 us 441.54 us] [-0.0032% +0.5368% +1.0868%] (p = 0.09 > 0.05) No change in performance 
+PR/CC [444.11 us 445.42 us 447.05 us] [-0.8847% -0.4298% +0.1180%] (p = 0.15 > 0.05) No change in performance 
+PR/GC [468.20 us 469.49 us 470.99 us] [+0.6293% +1.0883% +1.5384%] (p = 0.00 < 0.05) 
+PR/ARENA [424.28 us 424.71 us 425.13 us] [+0.0771% +0.3211% +0.5281%] (p = 0.02 < 0.05) 
+PR/EPOCH [787.95 us 790.12 us 792.98 us] [-0.7194% +0.0692% +0.7870%] (p = 0.87 > 0.05) No change in performance 
+PR/EPOCH_mt [1.2285 ms 1.2423 ms 1.2504 ms] [-0.7607% +0.2695% +1.3200%] (p = 0.63 > 0.05) No change in performance 

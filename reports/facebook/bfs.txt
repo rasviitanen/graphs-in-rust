@@ -1,0 +1,7 @@
+
+BFS/ARC [21.836 ms 22.280 ms 22.810 ms] [-2.0379% +1.8144% +6.6472%] (p = 0.44 > 0.05) No change in performance 
+BFS/RC [18.919 ms 19.202 ms 19.401 ms] [-1.8713% +1.6730% +5.1996%] (p = 0.43 > 0.05) No change in performance 
+BFS/CC [18.798 ms 19.282 ms 19.776 ms] [-6.1069% -1.8932% +2.3787%] (p = 0.42 > 0.05) No change in performance 
+BFS/GC [19.424 ms 19.596 ms 19.899 ms] [-4.4773% -0.8324% +2.4796%] (p = 0.67 > 0.05) No change in performance 
+BFS/ARENA [41.359 ms 42.599 ms 43.309 ms] [-7.2876% -2.6826% +2.0575%] (p = 0.31 > 0.05) No change in performance 
+BFS/EPOCH [20.669 ms 20.850 ms 21.074 ms] [-3.3179% -0.3427% +2.7397%] (p = 0.84 > 0.05) No change in performance 

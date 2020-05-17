@@ -314,7 +314,7 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
         if self.directed {
             self.num_edges
         } else {
-            self.num_edges*2
+            self.num_edges * 2
         }
     }
 
@@ -375,10 +375,12 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
     }
 
     fn out_neigh(&self, v: NodeId) -> Range<E> {
-        if v == 0 {
+        if v == 0 || v == 18446744073709551615 {
             // Our datastructure cannot handle id 0
             return Box::new(Vec::new().into_iter());
         }
+
+        // println!("GETTING OUT NEIGH OF {}", v);
 
         let guard = unsafe { &*(&epoch::pin() as *const _) };
         if let Some(found) = self.cache.read().unwrap().get(&v) {
@@ -461,7 +463,10 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
             node_id: e,
             weight: None,
         };
-        self.add_edge(v, edge_info, false);
+
+        let op = OpType::InsertEdge(v, e, Some(edge_info), false);
+        let insert_edge_txn = self.inner.txn(vec![op]);
+        insert_edge_txn.execute();
     }
 
     fn op_delete_edge(&self, v: NodeId, e: NodeId) {
@@ -472,13 +477,11 @@ impl<'a> CSRGraph<CustomNode, EdgeInfo> for Graph<'_, usize> {
         let op = OpType::Delete(v);
         let find_txn = self.inner.txn(vec![op]);
         let res = find_txn.execute();
-        self.delete_vertex(v);
     }
 
     fn op_find_vertex(&self, v: NodeId) {
         let op = OpType::Find(v);
         let find_txn = self.inner.txn(vec![op]);
         let res = find_txn.execute();
-        // self.cache.read().unwrap().get(&v);
     }
 }

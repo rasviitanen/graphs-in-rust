@@ -1,9 +1,9 @@
 
-CC/ARC [667.04 us 675.24 us 685.75 us] [-1.0063% +0.1842% +1.3006%] (p = 0.80 > 0.05) No change in performance 
-CC/ARC_mt [921.28 us 925.79 us 932.13 us] [-1.3339% -0.4835% +0.4792%] (p = 0.35 > 0.05) No change in performance 
-CC/RC [580.36 us 581.85 us 583.53 us] [+0.2864% +0.7142% +1.1443%] (p = 0.01 < 0.05) 
-CC/CC [583.46 us 585.20 us 586.51 us] [-0.6979% -0.2778% +0.0863%] (p = 0.22 > 0.05) No change in performance 
-CC/GC [585.83 us 587.49 us 588.64 us] [-0.9853% -0.2935% +0.3326%] (p = 0.44 > 0.05) No change in performance 
-CC/ARENA [505.74 us 521.83 us 543.54 us] [-6.6504% -2.3963% +2.0927%] (p = 0.32 > 0.05) No change in performance 
-CC/EPOCH [646.87 us 648.78 us 650.76 us] [-0.9419% -0.4723% +0.0068%] (p = 0.08 > 0.05) No change in performance 
-CC/EPOCH_mt [926.82 us 930.41 us 933.15 us] [-0.3839% +0.6012% +1.4022%] (p = 0.23 > 0.05) No change in performance 
+CC/ARC [770.57 us 774.04 us 776.32 us] [-0.0798% +0.7548% +1.4296%] (p = 0.08 > 0.05) No change in performance 
+CC/ARC_mt [797.49 us 801.35 us 805.73 us] [-1.3427% -0.6472% +0.1013%] (p = 0.11 > 0.05) No change in performance 
+CC/RC [664.45 us 667.56 us 670.64 us] [-1.5294% -0.6678% +0.2607%] (p = 0.18 > 0.05) No change in performance 
+CC/CC [687.12 us 689.71 us 692.65 us] [-0.6111% +0.2790% +1.1154%] (p = 0.56 > 0.05) No change in performance 
+CC/GC [691.09 us 693.05 us 694.35 us] [-0.5858% -0.2656% +0.0192%] (p = 0.13 > 0.05) No change in performance 
+CC/ARENA [638.50 us 641.56 us 644.90 us] [-0.7900% -0.1519% +0.4987%] (p = 0.66 > 0.05) No change in performance 
+CC/EPOCH [589.91 us 591.99 us 594.78 us] [-0.4746% +0.3654% +1.2690%] (p = 0.44 > 0.05) No change in performance 
+CC/EPOCH_mt [754.56 us 760.20 us 766.17 us] [-1.7481% -0.2944% +1.2574%] (p = 0.72 > 0.05) No change in performance 

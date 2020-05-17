@@ -1,0 +1,9 @@
+
+TC/ARC [30.612 ms 30.683 ms 30.757 ms] [-0.5312% +0.8163% +2.3594%] (p = 0.32 > 0.05) No change in performance 
+TC/ARC_mt [13.789 ms 13.881 ms 13.986 ms] [-0.6663% -0.0298% +0.5951%] (p = 0.94 > 0.05) No change in performance 
+TC/RC [16.432 ms 16.496 ms 16.571 ms] [-12.738% -4.0848% +1.1888%] (p = 0.63 > 0.05) No change in performance 
+TC/CC [20.306 ms 20.403 ms 20.490 ms] [-0.2538% +0.3748% +0.9825%] (p = 0.28 > 0.05) No change in performance 
+TC/GC [13.325 ms 13.410 ms 13.522 ms] [+0.3750% +1.2131% +2.0651%] (p = 0.02 < 0.05) 
+TC/ARENA [9.1595 ms 9.2129 ms 9.2529 ms] [-0.0487% +0.5349% +1.1198%] (p = 0.11 > 0.05) No change in performance 
+TC/EPOCH [2.6796 ms 2.6903 ms 2.7051 ms] [-1.0881% -0.1708% +0.6827%] (p = 0.73 > 0.05) No change in performance 
+TC/EPOCH_mt [1.7778 ms 1.7928 ms 1.8103 ms] [-2.3554% -1.0929% +0.2088%] (p = 0.13 > 0.05) No change in performance 

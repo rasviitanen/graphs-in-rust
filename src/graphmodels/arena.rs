@@ -51,29 +51,33 @@ pub struct Graph<T> {
     directed: bool,
     cache: RefCell<BTreeMap<NodeId, Index>>,
     n_edges: Cell<usize>,
+    num_edges: usize,
 }
 
 impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
-        let graph = Graph::new(true);
+        let mut graph = Graph::new(true);
         for v in 0..num_nodes {
             graph.add_vertex(v, None);
         }
 
         for (v, e, w) in edge_list {
-            graph.add_edge(*v, *e, w, true)
+            graph.add_edge(*v, *e, w, true);
+            graph.num_edges += 1;
         }
+
         graph
     }
 
     fn build_undirected(num_nodes: usize, edge_list: &EdgeList) -> Self {
-        let graph = Graph::new(false);
+        let mut graph = Graph::new(false);
         // println!("Building undirected, with {} nodes", num_nodes);
         for v in 0..num_nodes {
             graph.add_vertex(v, None);
         }
         for (v, e, w) in edge_list {
             graph.add_edge(*v, *e, w, false);
+            graph.num_edges += 1;
         }
 
         graph
@@ -92,11 +96,11 @@ impl<'a, T: Clone> CSRGraph<CustomIndex, CustomIndex> for Graph<T> {
     }
 
     fn num_edges_directed(&self) -> usize {
-        let mut sum = 0;
-        for (_, v) in self.vertices.borrow().iter() {
-            sum += v.out_edges.len();
+        if self.directed {
+            self.num_edges
+        } else {
+            self.num_edges * 2
         }
-        sum
     }
 
     fn out_degree(&self, v: NodeId) -> usize {
@@ -238,6 +242,7 @@ impl<T> Graph<T> {
             directed,
             cache: RefCell::new(BTreeMap::new()),
             n_edges: Cell::new(0),
+            num_edges: 0,
         }
     }
 
@@ -282,33 +287,36 @@ impl<T> Graph<T> {
                 self.vertices
                     .borrow_mut()
                     .get_mut(edge.index)
-                    .unwrap()
-                    .out_edges
-                    .insert(CustomIndex {
-                        index: vertex.index,
-                        weight: weight.as_ref().map(|x| *x),
-                    });
+                    .map(|vx| {
+                        vx.out_edges
+                        .insert(CustomIndex {
+                            index: vertex.index,
+                            weight: weight.as_ref().map(|x| *x),
+                        });}
+                    );
             } else {
                 self.vertices
                     .borrow_mut()
                     .get_mut(edge.index)
-                    .unwrap()
-                    .in_edges
-                    .insert(CustomIndex {
-                        index: vertex.index,
-                        weight: weight.as_ref().map(|x| *x),
-                    });
+                    .map(|vx|{
+                        vx.in_edges
+                        .insert(CustomIndex {
+                            index: vertex.index,
+                            weight: weight.as_ref().map(|x| *x),
+                        });}
+                    );
             }
             if self
                 .vertices
                 .borrow_mut()
                 .get_mut(vertex.index)
-                .unwrap()
-                .out_edges
-                .insert(CustomIndex {
-                    index: edge.index,
-                    weight: weight.as_ref().map(|x| *x),
-                })
+                .map(|vx|{
+                    vx.out_edges
+                    .insert(CustomIndex {
+                        index: edge.index,
+                        weight: weight.as_ref().map(|x| *x),
+                    })}
+                ).unwrap_or(false)
             {
                 self.n_edges.update(|x| x + 1);
             }

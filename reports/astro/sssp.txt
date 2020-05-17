@@ -1,7 +1,7 @@
 
-SSSP/ARC [3.6929 ms 3.9223 ms 4.2806 ms] [-4.8420% +6.6867% +21.588%] (p = 0.35 > 0.05) No change in performance 
-SSSP/RC [3.0424 ms 3.3373 ms 3.5767 ms] [-7.7061% +5.0544% +20.180%] (p = 0.53 > 0.05) No change in performance 
-SSSP/CC [3.4928 ms 3.7821 ms 4.1730 ms] [+0.5714% +12.734% +27.304%] (p = 0.08 > 0.05) No change in performance 
-SSSP/GC [3.2792 ms 3.5580 ms 3.8936 ms] [-18.768% -4.3347% +10.560%] (p = 0.62 > 0.05) No change in performance 
-SSSP/ARENA [2.4076 ms 2.5633 ms 2.7163 ms] [-2.7535% +8.0241% +20.702%] (p = 0.20 > 0.05) No change in performance 
-SSSP/EPOCH [4.6417 ms 4.9726 ms 5.4085 ms] [-2.3630% +6.7273% +18.492%] (p = 0.22 > 0.05) No change in performance 
+SSSP/ARC [30.415 ms 31.761 ms 33.084 ms] [-1.9688% +2.2557% +6.1101%] (p = 0.31 > 0.05) No change in performance 
+SSSP/RC [22.321 ms 22.815 ms 23.264 ms] [-1.4045% +2.4491% +7.4410%] (p = 0.32 > 0.05) No change in performance 
+SSSP/CC [24.375 ms 24.898 ms 25.354 ms] [+0.9453% +4.1085% +7.2647%] (p = 0.02 < 0.05) 
+SSSP/GC [24.336 ms 25.791 ms 27.297 ms] [-2.3784% +1.7388% +5.8610%] (p = 0.47 > 0.05) No change in performance 
+SSSP/ARENA [15.625 ms 16.271 ms 16.551 ms] [-6.8498% -1.6118% +3.4080%] (p = 0.57 > 0.05) No change in performance 
+SSSP/EPOCH [42.085 ms 43.245 ms 44.491 ms] [-13.096% -6.1596% +0.7650%] (p = 0.14 > 0.05) No change in performance 

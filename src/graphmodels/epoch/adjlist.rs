@@ -27,12 +27,12 @@ fn clr_markd(p: usize) -> usize {
     p & !1
 }
 #[inline]
-fn is_marked(p: usize) -> usize {
-    p & 1
+fn is_marked(p: usize) -> bool {
+    (p & 1) != 0
 }
 #[inline]
-fn is_delinv(p: usize) -> usize {
-    p & 2
+fn is_delinv(p: usize) -> bool {
+    (p & 2) != 0
 }
 #[inline]
 fn set_delinv(p: usize) -> usize {
@@ -283,8 +283,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                 //Check if node descriptor is marked for deletion
                 //If it has, we cannot update the descriptor and must perform physical removal
                 let g_current_desc = current_desc.load(SeqCst, guard);
-                if is_marked(g_current_desc.tag()) != 0 {
-                    if is_marked(current_ref.next.load(SeqCst, epoch::unprotected()).tag()) == 0 {
+                if is_marked(g_current_desc.tag()) {
+                    if !is_marked(current_ref.next.load(SeqCst, epoch::unprotected()).tag()) {
                         current_ref.next.fetch_or(0x1, SeqCst, epoch::unprotected());
                     }
                     *current = self.head.load_consume(guard);
@@ -368,7 +368,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                     // return ReturnCode::Inserted(RefEntry { node: *inserted });
                 }
 
-                *current = if is_marked(next.load(SeqCst, epoch::unprotected()).tag()) == 0 {
+                *current = if is_marked(next.load(SeqCst, epoch::unprotected()).tag()) {
                     *pred
                 } else {
                     self.head.load(SeqCst, guard)
@@ -415,7 +415,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
 
         // Check if the node is physically NOT within the list, or that it is there, but marked for deletion
         // If it is marked for deletion, the mdlist will physically remove it during the call to mdlist->Insert
-        if !Self::is_mdnode_exist(*md_current, edge) || is_delinv(pred_child.tag()) != 0 {
+        if !Self::is_mdnode_exist(*md_current, edge) || is_delinv(pred_child.tag()) {
             //Check if our transaction has been aborted by another thread
             let result = mdlist.insert(&new_node, md_pred, md_current, dim, pred_dim, guard);
 
@@ -453,7 +453,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
 
         // Try to find the vertex to which the current key is adjacenct,
         // if it is not found, we check if the vertex and edge are the same vertex.
-        if self.find_vertex(current, g_n_desc, desc, vertex, guard) || vertex == edge {
+        if self.find_vertex(current, g_n_desc, desc, vertex, guard) {
             if let Some(current_ref) = current.as_ref() {
                 let mdlist = &if direction_in {
                     current_ref.in_edges.as_ref().expect("NO MD LIST")
@@ -474,7 +474,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
 
                     // Check if the node is physically NOT within the list, or that it is there, but marked for deletion
                     // If it is marked for deletion, the mdlist will physically remove it during the call to mdlist->Insert
-                    if !Self::is_mdnode_exist(*md_current, edge) || is_delinv(pred_child.tag()) != 0
+                    if !Self::is_mdnode_exist(*md_current, edge) || is_delinv(pred_child.tag())
                     {
                         // Check if our transaction has been aborted by another thread
                         match (*desc).status.load() {
@@ -484,7 +484,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
 
                         let pred_current_desc = md_pred_ref.node_desc.load(SeqCst, guard);
 
-                        self.finish_pending_txn(pred_current_desc.with_tag(0), desc, guard);
+                        self.finish_pending_txn(pred_current_desc.with_tag(clr_mark(pred_current_desc.tag())), desc, guard);
 
                         let same_op = if let (Some(a), Some(b)) =
                             (pred_current_desc.as_ref(), g_n_desc.as_ref())
@@ -546,12 +546,12 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                             md_current.as_ref().unwrap().node_desc.load(SeqCst, guard);
 
                         // Node needs to be deleted
-                        if is_marked(current_desc.tag()) != 0 {
+                        if is_marked(current_desc.tag()) {
                             // Mark the MDList node for deletion and retry
                             // The physical deletion will occur during a call
                             // to mdlist->Insert (mdlist only performs physical deletion during insert operations)
                             let pred_child = &md_pred_ref.children[*pred_dim];
-                            if is_delinv(pred_child.load(SeqCst, epoch::unprotected()).tag()) == 0
+                            if !is_delinv(pred_child.load(SeqCst, epoch::unprotected()).tag())
                                 && pred_child
                                     .compare_and_set(
                                         *md_current,
@@ -606,6 +606,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                             };
                         }
                     }
+                    return ReturnCode::Fail("Unexpected error, should not reach here".into());
                 } // End of loop
             }
         } else {
@@ -642,7 +643,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                 let current_desc = &current.as_ref().unwrap().node_desc; // Safe
                 let g_current_desc = current_desc.load(SeqCst, guard);
 
-                if is_marked(g_current_desc.tag()) != 0 {
+                if is_marked(g_current_desc.tag()) {
                     return ReturnCode::Fail("Node was already marked".into());
                 }
 
@@ -726,6 +727,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
             } else {
                 return ReturnCode::Fail("Requested node does not exist".into());
             }
+
         }
     }
 
@@ -752,18 +754,18 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         let n_desc = Atomic::new(NodeDesc::new(desc, opid));
         let g_n_desc = &mut n_desc.load(SeqCst, guard);
 
-        if self.find_vertex(current, g_n_desc, desc, vertex, guard) || vertex == edge {
+        if self.find_vertex(current, g_n_desc, desc, vertex, guard) {
             let md_list = &if direction_in {
                 current
                     .as_ref()
-                    .unwrap()
+                    .expect("NO CURRENT")
                     .in_edges
                     .as_ref()
                     .expect("NO MD LIST")
             } else {
                 current
                     .as_ref()
-                    .unwrap()
+                    .expect("NO CURRENT")
                     .out_edges
                     .as_ref()
                     .expect("NO MD LIST")
@@ -774,19 +776,24 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                 MDList::locate_pred(coord, md_pred, md_current, dim, pred_dim, guard);
 
                 if Self::is_mdnode_exist(*md_current, edge) {
-                    let current_desc = &md_current.as_ref().unwrap().node_desc; // Safe
+                    let current_desc = &md_current.as_ref().expect("NO CURRENT DESC").node_desc; // Safe
                     let g_current_desc = current_desc.load(SeqCst, guard);
 
-                    if is_marked(g_current_desc.tag()) != 0 {
+                    if is_marked(g_current_desc.tag()) {
                         return ReturnCode::Fail("Node was already marked".into());
                     }
 
                     self.finish_pending_txn(g_current_desc, desc, guard);
 
-                    if Self::is_same_operation(
-                        g_current_desc.as_ref().unwrap(),
-                        g_n_desc.as_ref().unwrap(),
-                    ) {
+                    if let (Some(g_c), Some(g_n)) = (g_current_desc.as_ref(), g_n_desc.as_ref())
+                    {
+                        if Self::is_same_operation(
+                            g_c,
+                            g_n,
+                        ) {
+                            return ReturnCode::Skip;
+                        }
+                    } else {
                         return ReturnCode::Skip;
                     }
 
@@ -808,6 +815,9 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                     } else {
                         return ReturnCode::Fail("Key does not exists".into());
                     }
+
+                    return ReturnCode::Fail("Unexpected failure, should not fail here".into());
+
                 } else {
                     return ReturnCode::Fail("MDNode does not exists".into());
                 }
@@ -843,8 +853,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                 let current_desc = &current_ref.node_desc;
 
                 let g_current_desc = current_desc.load(SeqCst, guard);
-                if is_marked(g_current_desc.tag()) != 0 {
-                    if is_marked(current_ref.next.load(SeqCst, epoch::unprotected()).tag()) == 0 {
+                if is_marked(g_current_desc.tag()) {
+                    if !is_marked(current_ref.next.load(SeqCst, epoch::unprotected()).tag()) {
                         current_ref.next.fetch_or(0x1, SeqCst, epoch::unprotected());
                     }
                     *current = self.head.load(SeqCst, guard);
@@ -1145,7 +1155,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
             let current_desc = &n_ref.node_desc;
             let g_current_desc = current_desc.load(SeqCst, guard);
 
-            if g_current_desc.is_null() || (is_marked(g_current_desc.tag()) != 0) {
+            if g_current_desc.is_null() || (is_marked(g_current_desc.tag())) {
                 break;
             }
 
@@ -1246,16 +1256,16 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         let pred_next = &mut Shared::null();
 
         while let Some(curr_ref) = current.as_ref() {
-            if curr_ref.key == key {
+            if curr_ref.key >= key {
                 break;
             }
             *pred = *current;
             let pred_n = &pred.as_ref().unwrap().next;
-            *pred_next = pred_n.load(SeqCst, guard).with_tag(0);
+            *pred_next = pred_n.load(SeqCst, guard).with_tag(clr_mark(pred_n.load(SeqCst, guard).tag()));
             *current = *pred_next;
 
-            while is_marked(curr_ref.next.load(SeqCst, epoch::unprotected()).tag()) != 0 {
-                let next = curr_ref.next.load(SeqCst, guard);
+            while is_marked(current.as_ref().unwrap().next.load(SeqCst, guard).tag()) {
+                let next = current.as_ref().unwrap().next.load(SeqCst, guard);
                 *current = next.with_tag(clr_mark(next.tag()));
             }
 
@@ -1291,7 +1301,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         if Self::is_node_exist(*curr, key) {
             let current_desc = &curr.as_ref().unwrap().node_desc;
             let g_current_desc = current_desc.load(SeqCst, guard);
-            if is_marked(g_current_desc.tag()) != 0 {
+            if is_marked(g_current_desc.tag()) {
                 // Node descriptor is marked for deletion
                 return false;
             }
@@ -1341,7 +1351,9 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                     let fetched = n_next.fetch_or(0x1, SeqCst, guard);
                     let succ = fetched.with_tag(clr_mark(fetched.tag()));
 
-                    assert!(pred_next.compare_and_set(n, succ, SeqCst, guard).is_ok());
+                    pred_next.compare_and_set(n, succ, SeqCst, guard).is_ok();
+
+                    // assert!(pred_next.compare_and_set(n, succ, SeqCst, guard).is_ok());
                 }
             }
         }

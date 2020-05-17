@@ -1,7 +1,7 @@
 
-BFS/ARC [384.89 us 386.16 us 387.48 us] [-0.5445% -0.1646% +0.2303%] (p = 0.44 > 0.05) No change in performance 
-BFS/RC [320.19 us 321.05 us 322.07 us] [-1.1941% -0.4630% +0.3326%] (p = 0.26 > 0.05) No change in performance 
-BFS/CC [325.66 us 326.67 us 327.69 us] [+0.0433% +0.7027% +1.2918%] (p = 0.05 > 0.05) No change in performance 
-BFS/GC [348.79 us 350.12 us 350.82 us] [-0.0254% +0.4152% +0.8615%] (p = 0.10 > 0.05) No change in performance 
-BFS/ARENA [310.24 us 310.95 us 311.48 us] [+0.6126% +1.1088% +1.6634%] (p = 0.00 < 0.05) 
-BFS/EPOCH [333.87 us 334.80 us 335.94 us] [+0.3019% +0.9864% +1.6451%] (p = 0.01 < 0.05) 
+BFS/ARC [10.192 ms 10.670 ms 11.144 ms] [-9.4859% +0.5610% +12.342%] (p = 0.92 > 0.05) No change in performance 
+BFS/RC [8.1836 ms 8.4340 ms 8.8051 ms] [-4.6463% +1.2432% +8.1824%] (p = 0.72 > 0.05) No change in performance 
+BFS/CC [8.2940 ms 8.6285 ms 8.9345 ms] [-4.9417% +3.2749% +11.824%] (p = 0.47 > 0.05) No change in performance 
+BFS/GC [8.2407 ms 8.8969 ms 9.3951 ms] [-7.6616% -1.4194% +6.8492%] (p = 0.73 > 0.05) No change in performance 
+BFS/ARENA [7.1699 ms 7.7643 ms 8.2874 ms] [-6.6288% +2.4324% +11.867%] (p = 0.63 > 0.05) No change in performance 
+BFS/EPOCH [9.0283 ms 9.4439 ms 9.8034 ms] [-4.5765% +3.1361% +11.927%] (p = 0.48 > 0.05) No change in performance 

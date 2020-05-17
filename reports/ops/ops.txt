@@ -1,0 +1,9 @@
+
+OPS/EPOCH_mt [314.02 us 318.85 us 327.05 us] [-5.0596% +0.1265% +5.2218%] (p = 0.96 > 0.05) No change in performance 
+OPS/EPOCH [667.04 us 679.55 us 690.95 us] [-3.4692% +0.1726% +4.2636%] (p = 0.94 > 0.05) No change in performance 
+OPS/ARC [200.30 us 205.59 us 210.11 us] [-6.0461% -1.6677% +2.6052%] (p = 0.49 > 0.05) No change in performance 
+OPS/ARC_mt [487.23 us 507.99 us 548.77 us] [-4.2038% +3.1043% +10.709%] (p = 0.44 > 0.05) No change in performance 
+OPS/RC [158.55 us 168.58 us 192.72 us] [-18.573% -5.0875% +9.8820%] (p = 0.50 > 0.05) No change in performance 
+OPS/CC [173.53 us 183.82 us 206.38 us] [-0.5571% +11.612% +25.693%] (p = 0.11 > 0.05) No change in performance 
+OPS/GC [202.42 us 261.72 us 324.39 us] [-27.262% -7.8821% +13.846%] (p = 0.51 > 0.05) No change in performance 
+OPS/ARENA [163.99 us 169.72 us 172.23 us] [-8.5301% -3.1055% +2.2744%] (p = 0.29 > 0.05) No change in performance 

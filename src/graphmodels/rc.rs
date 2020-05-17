@@ -102,30 +102,34 @@ impl<T> Node<T> {
 pub struct Graph<T> {
     vertices: RefCell<BTreeMap<usize, WrappedNode<T>>>,
     n_edges: Cell<usize>,
+    num_edges: usize,
     directed: bool,
 }
 
 impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     fn build_directed(num_nodes: usize, edge_list: &EdgeList) -> Self {
-        let graph = Graph::new(true);
+        let mut graph = Graph::new(true);
         for v in 0..num_nodes {
             graph.add_vertex(v, None);
         }
 
         for (v, e, w) in edge_list {
-            graph.add_edge(*v, *e, w, true)
+            graph.add_edge(*v, *e, w, true);
+            graph.num_edges += 1;
         }
+
         graph
     }
 
     fn build_undirected(num_nodes: usize, edge_list: &EdgeList) -> Self {
-        let graph = Graph::new(false);
+        let mut graph = Graph::new(false);
         // println!("Building undirected, with {} nodes", num_nodes);
         for v in 0..num_nodes {
             graph.add_vertex(v, None);
         }
         for (v, e, w) in edge_list {
             graph.add_edge(*v, *e, w, false);
+            graph.num_edges += 1;
         }
 
         graph
@@ -144,11 +148,11 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
     }
 
     fn num_edges_directed(&self) -> usize {
-        let mut sum = 0;
-        for v in self.vertices() {
-            sum += v.borrow().out_edges.len();
+        if self.directed {
+            self.num_edges
+        } else {
+            self.num_edges * 2
         }
-        sum
     }
 
     fn out_degree(&self, v: NodeId) -> usize {
@@ -263,6 +267,7 @@ impl<T> Graph<T> {
         Graph {
             vertices: RefCell::new(BTreeMap::new()),
             n_edges: Cell::new(0),
+            num_edges: 0,
             directed,
         }
     }
@@ -295,7 +300,7 @@ impl<T> Graph<T> {
                 self.n_edges.update(|x| x + 1);
             }
         } else {
-            panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
+            // panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
         }
     }
 

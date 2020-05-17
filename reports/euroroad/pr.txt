@@ -1,9 +1,9 @@
 
-PR/ARC [4.3603 ms 4.3853 ms 4.4116 ms] [-2.1562% -1.2637% -0.3519%] (p = 0.02 < 0.05) 
-PR/ARC_mt [6.0012 ms 6.0709 ms 6.1714 ms] [-3.2787% -0.9728% +0.9699%] (p = 0.45 > 0.05) No change in performance 
-PR/RC [3.4624 ms 3.4830 ms 3.4976 ms] [-0.5669% -0.0789% +0.3732%] (p = 0.76 > 0.05) No change in performance 
-PR/CC [3.4755 ms 3.4860 ms 3.4994 ms] [+0.5789% +0.9821% +1.3889%] (p = 0.00 < 0.05) 
-PR/GC [3.7234 ms 3.7316 ms 3.7426 ms] [-0.5403% -0.1421% +0.2249%] (p = 0.51 > 0.05) No change in performance 
-PR/ARENA [3.2105 ms 3.2798 ms 3.3742 ms] [+0.2854% +1.2856% +2.9860%] (p = 0.08 > 0.05) No change in performance 
-PR/EPOCH [4.2657 ms 4.3084 ms 4.3514 ms] [-1.7206% -0.4412% +0.7918%] (p = 0.54 > 0.05) No change in performance 
-PR/EPOCH_mt [5.9600 ms 5.9915 ms 6.0158 ms] [-2.1570% -1.0911% +0.2905%] (p = 0.12 > 0.05) No change in performance 
+PR/ARC [368.07 us 369.18 us 370.79 us] [-0.4865% +0.7962% +1.9351%] (p = 0.24 > 0.05) No change in performance 
+PR/ARC_mt [820.38 us 827.02 us 833.31 us] [-0.3829% +1.1654% +2.5578%] (p = 0.15 > 0.05) No change in performance 
+PR/RC [277.26 us 278.21 us 279.61 us] [-0.1857% +0.3791% +1.0091%] (p = 0.25 > 0.05) No change in performance 
+PR/CC [275.68 us 276.69 us 277.61 us] [-1.9451% -1.4016% -0.9325%] (p = 0.00 < 0.05) 
+PR/GC [295.72 us 296.62 us 298.25 us] [-0.3352% +0.1794% +0.7580%] (p = 0.54 > 0.05) No change in performance 
+PR/ARENA [269.58 us 271.10 us 272.85 us] [-1.3291% -0.4121% +0.4921%] (p = 0.41 > 0.05) No change in performance 
+PR/EPOCH [506.77 us 512.29 us 519.10 us] [+0.6831% +1.7368% +2.8635%] (p = 0.01 < 0.05) 
+PR/EPOCH_mt [848.34 us 853.45 us 858.56 us] [+0.0824% +1.3839% +2.6793%] (p = 0.07 > 0.05) No change in performance 

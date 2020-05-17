@@ -6,7 +6,8 @@
 #![allow(unused_variables)]
 #![allow(unused_unsafe)]
 
-use criterion::{black_box, Criterion};
+// use criterion::{black_box, Criterion};
+use criterion::*;
 use criterion_macro::criterion;
 
 use gapbs::benchmark::{benchmark_kernel, benchmark_kernel_with_sp, SourcePicker};
@@ -16,7 +17,9 @@ use gapbs::graph::CSRGraph;
 use gapbs::graphmodels;
 use gapbs::types::*;
 
-type Graph<'a> = graphmodels::epoch::Graph<'a, usize>;
+// type Graph<'a> = graphmodels::epoch::Graph<'a, usize>;
+type Graph = graphmodels::arena::Graph<usize>;
+
 
 fn main() {
     println!(
@@ -46,6 +49,11 @@ fn main() {
     //     Box::new(|| {}),
     //     Box::new(|| {}),
     // );
+
+    // let mut builder = BuilderBase::new();
+    // let graph: Graph = builder.make_graph();
+    // gapbs::ops::ops_epoch_mt(&graph);
+
 
     println!("Breadth-First Search (BFS) - direction optimizing");
     benchmark_kernel_with_sp(
@@ -117,11 +125,17 @@ macro_rules! bench_ops {
     ($name: tt, $graphmodel: path, $group: expr) => {{
         use $graphmodel as graphmodel;
         $group.bench_function($name, |b| {
-            let mut builder = BuilderBase::new();
-            let graph: graphmodel::Graph<usize> = builder.make_graph();
-            b.iter(|| {
-                gapbs::ops::ops(&graph);
-            })
+            b.iter_batched(
+                || {
+                    let mut builder = BuilderBase::new();
+                    let graph: graphmodel::Graph<usize> = builder.make_graph();
+                    graph
+                },
+                move |graph| {
+                    gapbs::ops::ops(&graph);
+                },
+                BatchSize::SmallInput,
+            )
         });
     }};
 }
@@ -129,12 +143,36 @@ macro_rules! bench_ops {
 macro_rules! bench_ops_epoch_mt {
     ($name: tt, $group: expr) => {{
         $group.bench_function($name, |b| {
-            let mut builder = BuilderBase::new();
-            let graph: gapbs::graphmodels::epoch::Graph<usize> = builder.make_graph();
-            b.iter(|| {
-                gapbs::ops::ops_epoch_mt(&graph);
+            b.iter_batched(
+                || {
+                    let mut builder = BuilderBase::new();
+                    let graph: gapbs::graphmodels::epoch::Graph<usize> = builder.make_graph();
 
-            })
+                    graph
+                },
+                move |graph| {
+                    gapbs::ops::ops_epoch_mt(&graph);
+                },
+                BatchSize::SmallInput,
+            )
+        });
+    }};
+}
+
+macro_rules! bench_ops_epoch {
+    ($name: tt, $group: expr) => {{
+        $group.bench_function($name, |b| {
+            b.iter_batched(
+                || {
+                    let mut builder = BuilderBase::new();
+                    let graph: gapbs::graphmodels::epoch::Graph<usize> = builder.make_graph();
+                    graph
+                },
+                move |graph| {
+                    gapbs::ops::ops_epoch(&graph);
+                },
+                BatchSize::SmallInput,
+            )
         });
     }};
 }
@@ -143,19 +181,17 @@ macro_rules! bench_ops_mt {
     ($name: tt, $graphmodel: path, $group: expr) => {{
         use $graphmodel as graphmodel;
         $group.bench_function($name, |b| {
-            b.iter(|| {
-                let mut builder = BuilderBase::new();
-                let graph: graphmodel::Graph<usize> = builder.make_graph();
-                let mut source_picker = SourcePicker::new(&graph);
-                benchmark_kernel(
-                    &graph,
-                    Box::new(|g| {
-                        gapbs::ops::ops_mt(g);
-                    }),
-                    Box::new(|| {}),
-                    Box::new(|| {}),
-                );
-            })
+            b.iter_batched(
+                || {
+                    let mut builder = BuilderBase::new();
+                    let graph: graphmodel::Graph<usize> = builder.make_graph();
+                    graph
+                },
+                move |graph| {
+                    gapbs::ops::ops_mt(&graph);
+                },
+                BatchSize::SmallInput,
+            )
         });
     }};
 }
@@ -404,14 +440,14 @@ fn custom_criterion() -> Criterion {
 #[criterion(custom_criterion())]
 fn bench_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("OPS");
-    bench_ops!("EPOCH", graphmodels::epoch, group);
-    bench_ops_epoch_mt!("EPOCH_mt_txn", group);
-    bench_ops!("ARC", graphmodels::arc, group);
-    // bench_ops_mt!("ARC_mt", graphmodels::arc, group);
-    bench_ops!("RC", graphmodels::rc, group);
-    bench_ops!("CC", graphmodels::cc, group);
-    bench_ops!("GC", graphmodels::gc, group);
-    bench_ops!("ARENA", graphmodels::arena, group);
+    // bench_ops_epoch_mt!("EPOCH_mt", group);
+    // bench_ops_epoch!("EPOCH", group);
+    // bench_ops!("ARC", graphmodels::arc, group);
+    bench_ops_mt!("ARC_mt", graphmodels::arc, group);
+    // bench_ops!("RC", graphmodels::rc, group);
+    // bench_ops!("CC", graphmodels::cc, group);
+    // bench_ops!("GC", graphmodels::gc, group);
+    // bench_ops!("ARENA", graphmodels::arena, group);
 }
 
 #[cfg(feature = "bfs")]

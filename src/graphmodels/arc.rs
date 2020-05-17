@@ -152,7 +152,7 @@ impl<'a, T: 'a + Clone> CSRGraph<WrappedNode<T>, WrappedNode<T>> for Graph<T> {
         if self.directed {
             self.num_edges
         } else {
-            self.num_edges*2
+            self.num_edges * 2
         }
     }
 
@@ -293,9 +293,10 @@ impl<T> Graph<T> {
     }
 
     pub fn add_edge(&self, vertex: usize, edge: usize, weight: &Option<usize>, directed: bool) {
+        let lock = self.vertices.read().expect("Could not read");
         if let (Some(vertex_node), Some(edge_node)) = (
-            self.vertices.read().expect("Could not read").get(&vertex),
-            self.vertices.read().expect("Could not read").get(&edge),
+            lock.get(&vertex),
+            lock.get(&edge),
         ) {
             if !directed {
                 Node::add_out_edge(&edge_node, &vertex_node, weight);
@@ -305,7 +306,7 @@ impl<T> Graph<T> {
 
             Node::add_out_edge(&vertex_node, &edge_node, weight);
         } else {
-            panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
+            // panic!("Could not add edge, one or both of the nodes you are trying to connect does not exist");
         }
     }
 

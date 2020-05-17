@@ -1,0 +1,7 @@
+
+SSSP/ARC [1.7905 ms 1.8065 ms 1.8229 ms] [-0.3073% +1.0720% +2.4431%] (p = 0.17 > 0.05) No change in performance 
+SSSP/RC [1.2377 ms 1.2459 ms 1.2531 ms] [-1.1838% +0.1249% +1.3019%] (p = 0.87 > 0.05) No change in performance 
+SSSP/CC [1.3138 ms 1.3240 ms 1.3351 ms] [-1.0566% +0.1699% +1.4592%] (p = 0.81 > 0.05) No change in performance 
+SSSP/GC [1.5104 ms 1.5231 ms 1.5315 ms] [-1.5820% +0.6159% +2.4570%] (p = 0.56 > 0.05) No change in performance 
+SSSP/ARENA [1.1824 ms 1.1904 ms 1.1977 ms] [-3.3533% -2.1100% -0.8077%] (p = 0.01 < 0.05) 
+SSSP/EPOCH [2.2210 ms 2.2475 ms 2.2849 ms] [-1.4532% +0.1831% +1.8017%] (p = 0.82 > 0.05) No change in performance 
