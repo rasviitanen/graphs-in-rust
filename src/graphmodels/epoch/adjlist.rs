@@ -1071,34 +1071,34 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                     .is_ok()
                 {
                     // FIXME:(rasmus) call mark for deletion here
-                    Self::mark_for_deletion(
-                        &ins_nodes,
-                        &ins_pred_nodes,
-                        &md_ins_pred_nodes,
-                        &md_ins_pred_nodes,
-                        // &md_ins_parent_nodes,
-                        &md_ins_dims,
-                        &md_ins_pred_dims,
-                        desc,
-                        guard,
-                    );
+                    // Self::mark_for_deletion(
+                    //     &ins_nodes,
+                    //     &ins_pred_nodes,
+                    //     &md_ins_pred_nodes,
+                    //     &md_ins_pred_nodes,
+                    //     // &md_ins_parent_nodes,
+                    //     &md_ins_dims,
+                    //     &md_ins_pred_dims,
+                    //     desc,
+                    //     guard,
+                    // );
                 }
             } else if (*desc)
                 .status
                 .compare_exchange(OpStatus::Active, OpStatus::Committed)
                 .is_ok()
             {
-                Self::mark_for_deletion(
-                    &del_nodes,
-                    &del_pred_nodes,
-                    &md_del_nodes,
-                    &md_del_pred_nodes,
-                    // &md_del_parent_nodes,
-                    &md_del_dims,
-                    &md_del_pred_dims,
-                    desc,
-                    guard,
-                )
+                // Self::mark_for_deletion(
+                //     &del_nodes,
+                //     &del_pred_nodes,
+                //     &md_del_nodes,
+                //     &md_del_pred_nodes,
+                //     // &md_del_parent_nodes,
+                //     &md_del_dims,
+                //     &md_del_pred_dims,
+                //     desc,
+                //     guard,
+                // )
             }
         });
     }
@@ -1331,10 +1331,10 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
         for i in 0..nodes.len() {
             let n = nodes[i];
             if !n.is_null() {
-                let node_desc = &n.as_ref().unwrap().node_desc;
+                let node_desc = &n.as_ref().expect("No node desc").node_desc;
                 let g_node_desc = node_desc.load(SeqCst, guard);
 
-                if std::ptr::eq(g_node_desc.as_ref().unwrap().desc, desc)
+                if std::ptr::eq(g_node_desc.as_ref().expect("No g_node desc").desc, desc)
                     && node_desc
                         .compare_and_set(
                             g_node_desc,
@@ -1345,8 +1345,8 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
                         .is_ok()
                 {
                     let pred = preds[i];
-                    let n_next = &n.as_ref().unwrap().next;
-                    let pred_next = &pred.as_ref().unwrap().next;
+                    let n_next = &n.as_ref().expect("No n.as_ref()").next;
+                    let pred_next = &pred.as_ref().expect("No pred.as_ref()").next;
 
                     let fetched = n_next.fetch_or(0x1, SeqCst, guard);
                     let succ = fetched.with_tag(clr_mark(fetched.tag()));
@@ -1365,7 +1365,7 @@ impl<'a: 'd + 'g, 'd, 'g, T: 'a + Clone, E: 'a + Clone> AdjacencyList<'a, T, E> 
             let mut pred_dim = pred_dims[i];
 
             if !node.is_null() {
-                let node_desc = &node.as_ref().unwrap().node_desc;
+                let node_desc = &node.as_ref().expect("No node_desc").node_desc;
                 let g_node_desc = node_desc.load(SeqCst, guard);
 
                 if std::ptr::eq(g_node_desc.as_ref().unwrap().desc, desc)

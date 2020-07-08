@@ -440,14 +440,14 @@ fn custom_criterion() -> Criterion {
 #[criterion(custom_criterion())]
 fn bench_ops(c: &mut Criterion) {
     let mut group = c.benchmark_group("OPS");
-    // bench_ops_epoch_mt!("EPOCH_mt", group);
-    // bench_ops_epoch!("EPOCH", group);
-    // bench_ops!("ARC", graphmodels::arc, group);
+    bench_ops_epoch_mt!("EPOCH_mt", group);
+    bench_ops_epoch!("EPOCH", group);
+    bench_ops!("ARC", graphmodels::arc, group);
     bench_ops_mt!("ARC_mt", graphmodels::arc, group);
-    // bench_ops!("RC", graphmodels::rc, group);
-    // bench_ops!("CC", graphmodels::cc, group);
-    // bench_ops!("GC", graphmodels::gc, group);
-    // bench_ops!("ARENA", graphmodels::arena, group);
+    bench_ops!("RC", graphmodels::rc, group);
+    bench_ops!("CC", graphmodels::cc, group);
+    bench_ops!("GC", graphmodels::gc, group);
+    bench_ops!("ARENA", graphmodels::arena, group);
 }
 
 #[cfg(feature = "bfs")]
